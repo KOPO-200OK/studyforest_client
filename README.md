@@ -180,19 +180,4 @@ main     # 배포 브랜치
 
 ---
 
-## 🚀 시작하기
 
-```bash
-# 저장소 클론
-git clone https://github.com/your-org/gongsup.git
-cd gongsup
-
-# 백엔드 실행
-cd backend
-./gradlew bootRun
-
-# 프론트엔드 실행
-cd frontend
-npm install
-npm start
-```
