@@ -3,6 +3,8 @@
 // 새 컴포넌트/화면은 이 토큰을 import 해서 사용합니다.
 // ============================================================
 
+import lineFrame from "@/imports/line_frame.png";
+
 // ── 폰트 ──────────────────────────────────────────────
 export const ff = "'Noto Sans KR',sans-serif";   // 본문
 export const fs = "'Noto Serif KR',serif";        // 제목/헤더
@@ -76,3 +78,15 @@ export type ButtonVariant = keyof typeof BUTTON_VARIANTS;
 
 // ── 간격/모서리 ──────────────────────────────────────
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 } as const;
+
+// ── 통나무 액자 테두리 (선택 카드 등에 사용) ────────────
+export function woodFrameBorder(width = 14) {
+  return {
+    borderStyle: "solid",
+    borderWidth: width,
+    borderImageSource: `url(${lineFrame})`,
+    borderImageSlice: "71 99 78 94",
+    borderImageWidth: `${width}px`,
+    borderImageRepeat: "stretch",
+  } as const;
+}

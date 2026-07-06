@@ -6,7 +6,7 @@ import { mockAuthApi } from "@/api/mockAuthApi";
 
 export default function SignupPage() {
   const navigate = useNavigate();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -14,7 +14,7 @@ export default function SignupPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!username || !password || !confirmPassword) {
+    if (!email || !password || !confirmPassword) {
       setError("모든 항목을 입력해주세요");
       return;
     }
@@ -25,8 +25,8 @@ export default function SignupPage() {
     setLoading(true);
     setError(null);
     try {
-      await mockAuthApi.signup(username, password);
-      navigate("/login", { replace: true, state: { justSignedUp: true } });
+      await mockAuthApi.signup(email, password);
+      navigate("/select-character", { replace: true, state: { email } });
     } catch (err) {
       setError(err instanceof Error ? err.message : "회원가입에 실패했습니다");
     } finally {
@@ -45,12 +45,13 @@ export default function SignupPage() {
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <span style={{ fontSize: 11, color: C.inkMid, fontWeight: 700 }}>아이디</span>
+            <span style={{ fontSize: 11, color: C.inkMid, fontWeight: 700 }}>이메일</span>
             <Input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="아이디를 입력하세요"
-              autoComplete="username"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="이메일을 입력하세요"
+              autoComplete="email"
               style={{ width: "100%" }}
             />
           </label>
