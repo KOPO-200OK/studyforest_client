@@ -1,6 +1,8 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import AppLayout from "@/layouts/AppLayout";
 
+import LoginPage from "@/pages/LoginPage";
+import SignupPage from "@/pages/SignupPage";
 import StudyRoomPage from "@/pages/StudyRoomPage";
 import MyStudyPage from "@/pages/MyStudyPage";
 import JangwonPage from "@/pages/JangwonPage";
@@ -19,10 +21,12 @@ import WrongAnswerPage from "@/pages/question/WrongAnswerPage";
 import AiQuestionPage from "@/pages/question/AiQuestionPage";
 
 export const router = createBrowserRouter([
+  { path: "/", element: <Navigate to="/login" replace /> },
+  { path: "login", element: <LoginPage /> },
+  { path: "signup", element: <SignupPage /> },
   {
     element: <AppLayout />,
     children: [
-      { index: true, element: <Navigate to="/study-room" replace /> },
       { path: "study-room", element: <StudyRoomPage /> },
       { path: "my-study", element: <MyStudyPage /> },
       { path: "jangwon", element: <JangwonPage /> },
