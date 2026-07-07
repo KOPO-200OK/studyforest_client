@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   CheckCircle2, Circle, MessageCircle, PenLine, BarChart2,
   BookOpen, Bell, Send, Target, ChevronRight,
@@ -20,6 +21,41 @@ const SPRITE_SHEETS: Partial<Record<number, string>> = {
   // 나머지 캐릭터는 이미지 추가 시 여기에 등록
 };
 
+// ── 캐릭터 방향별 누끼컷 (charId → 방향번호 → 이미지) ─────────────
+// 방향 번호 1~8: 0도=12시 방향(후면)에서 시계방향으로 45°씩 증가
+// 1=후면 2=뒤우 3=우측 4=앞우 5=정면 6=앞좌 7=좌측 8=뒤좌
+import hwarangF1 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_1.png";
+import hwarangF2 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_2.png";
+import hwarangF3 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_3.png";
+import hwarangF5 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_5.png";
+import hwarangF6 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_6.png";
+import hwarangF7 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_7.png";
+import hwarangF8 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_8.png";
+
+const CUTOUT_SPRITES: Partial<Record<number, Partial<Record<number, string>>>> = {
+  4: { 1: hwarangF1, 2: hwarangF2, 3: hwarangF3, 5: hwarangF5, 6: hwarangF6, 7: hwarangF7, 8: hwarangF8 },
+  // 나머지 캐릭터는 누끼컷 추가 시 여기에 등록
+};
+
+// 누끼컷은 이미지 여백을 딱 맞게 잘라둔 상태라 고정 높이로 렌더링 — 좌석 좌표와의
+// 정렬 계산(translateY)이 매번 달라지지 않도록 size prop과 무관하게 고정한다.
+const CUTOUT_HEIGHT = 70;
+
+// 좌석별 방향 번호 (좌석/벤치가 놓인 방향 — 캐릭터와 무관하게 고정)
+function getSeatDirection(seatId: number): number {
+  if ([1, 10].includes(seatId)) return 5;                                              // 정면
+  if ([2, 3, 4, 5, 6, 7, 8, 9, 14, 15, 20, 21].includes(seatId)) return 1;              // 후면
+  if ([11, 18, 23].includes(seatId)) return 7;                                          // 왼쪽 보기
+  if ([12, 24].includes(seatId)) return 3;                                              // 오른쪽 보기
+  if ([13, 19].includes(seatId)) return 2;
+  if ([16, 17, 22].includes(seatId)) return 8;
+  return 5;
+}
+
+import ProfileAvatar from "@/components/ProfileAvatar";
+import { mockAuthApi } from "@/api/mockAuthApi";
+import { CHARACTERS } from "@/data/characters";
+
 // 스프라이트 시트: 4열 × 2행 배치
 const SHEET_COLS = 4;
 const SHEET_ROWS = 2;
@@ -38,17 +74,26 @@ function getSeatOrientation(seatId: number): [number, number] {
   return [2, 0];                   // 세계수 중간
 }
 
-// 스프라이트 or SVG fallback
-function SeatSprite({ charId, col, row, size = 56 }: {
-  charId: number; col: number; row: number; size?: number;
+// 누끼컷 → 스프라이트 시트 → SVG 순으로 폴백
+function SeatSprite({ charId, seatId, size = 56 }: {
+  charId: number; seatId: number; size?: number;
 }) {
-  const src = SPRITE_SHEETS[charId];
-  if (!src) return <CharSVG id={charId} size={size} />;
+  const cutouts = CUTOUT_SPRITES[charId];
+  if (cutouts) {
+    const cutoutSrc = cutouts[getSeatDirection(seatId)];
+    if (cutoutSrc) {
+      return <img src={cutoutSrc} alt="" style={{ height: CUTOUT_HEIGHT, width: "auto", display: "block" }} />;
+    }
+  }
+
+  const sheetSrc = SPRITE_SHEETS[charId];
+  if (!sheetSrc) return <CharSVG id={charId} size={size} />;
+  const [col, row] = getSeatOrientation(seatId);
   const sw = size;
   const sh = Math.round(size * (200 / 150)); // 스프라이트 셀 비율 3:4
   return (
     <div style={{ width: sw, height: sh, overflow: "hidden", position: "relative", flexShrink: 0 }}>
-      <img src={src} style={{
+      <img src={sheetSrc} style={{
         position: "absolute",
         width: sw * SHEET_COLS,
         height: sh * SHEET_ROWS,
@@ -321,6 +366,8 @@ export function HomePage({ todos, remove, add, aiInput, setAiInput }: {
   todos: Todo[]; remove: (id: number) => void; add: (text: string) => void;
   aiInput: string; setAiInput: (v: string) => void;
 }) {
+  const navigate = useNavigate();
+  const nickname = mockAuthApi.getCurrentAccount()?.nickname ?? "학습자";
   return (
     <div style={{ flex: 1, minHeight: 0, position: "relative", overflow: "auto" }}>
       {/* Map as blurred hero background */}
@@ -339,7 +386,7 @@ export function HomePage({ todos, remove, add, aiInput, setAiInput }: {
                 <span style={{ fontSize: 28 }}>🧑‍🎓</span>
                 <div>
                   <div style={{ fontFamily: fs, fontWeight: 700, fontSize: 20, color: "#f5e6c8", textShadow: "0 2px 8px rgba(0,0,0,0.5)" }}>
-                    역사왕123님, 오늘도 화이팅!
+                    {nickname}님, 오늘도 화이팅!
                   </div>
                   <div style={{ fontSize: 12, color: "#c8a060", fontFamily: ff, marginTop: 2 }}>
                     한양생 Lv.7 · 오늘 공부시간 <strong style={{ color: "#f5c842" }}>2h 34m</strong>
@@ -411,7 +458,7 @@ export function HomePage({ todos, remove, add, aiInput, setAiInput }: {
               <div style={{ fontSize: 11, color: "#9aaa80", fontFamily: ff }}>4개 구역에서 다양한 방식으로 학습해보세요</div>
             </div>
           </div>
-          <button style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 18px", background: "linear-gradient(135deg,#3a6030,#245020)", color: "#c0f0a0", border: "2px solid #1a3010", boxShadow: "2px 3px 0 #0e2008", cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: ff }}>
+          <button onClick={() => navigate("/study-room")} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 18px", background: "linear-gradient(135deg,#3a6030,#245020)", color: "#c0f0a0", border: "2px solid #1a3010", boxShadow: "2px 3px 0 #0e2008", cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: ff }}>
             스터디룸 입장 <ChevronRight size={14} />
           </button>
         </div>
@@ -428,13 +475,13 @@ const MAP_W = 1022;
 const MAP_H = 620;
 
 const RAW_SEATS: Omit<Seat, "status">[] = [
-  { id: 1,  x: 86,  y: 146, zone: "집중의 숲" },
-  { id: 2,  x: 84,  y: 190, zone: "집중의 숲" },
+  { id: 1,  x: 86,  y: 131, zone: "집중의 숲" },
+  { id: 2,  x: 84,  y: 175, zone: "집중의 숲" },
   { id: 3,  x: 188, y: 158, zone: "집중의 숲" },
-  { id: 4,  x: 358, y: 170, zone: "집중의 숲" },
+  { id: 4,  x: 350, y: 170, zone: "집중의 숲" },
   { id: 5,  x: 469, y: 173, zone: "집중의 숲" },
   { id: 6,  x: 469, y: 272, zone: "집중의 숲" },
-  { id: 7,  x: 357, y: 286, zone: "집중의 숲" },
+  { id: 7,  x: 349, y: 286, zone: "집중의 숲" },
   { id: 8,  x: 180, y: 292, zone: "집중의 숲" },
   { id: 9,  x: 85,  y: 294, zone: "집중의 숲" },
   { id: 10, x: 84,  y: 252, zone: "집중의 숲" },
@@ -455,8 +502,8 @@ const RAW_SEATS: Omit<Seat, "status">[] = [
 ];
 
 // pre-occupied seats for visual context
-const OCCUPIED_IDS = new Set([2, 4, 7, 13, 15, 19, 23]);
-const DISABLED_IDS = new Set([5]);
+const OCCUPIED_IDS = new Set<number>([]);
+const DISABLED_IDS = new Set<number>([]);
 
 function makeSeats(): Seat[] {
   return RAW_SEATS.map(s => ({
@@ -511,6 +558,7 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   todos: Todo[]; remove: (id: number) => void; add: (text: string) => void;
   char: number; setChar: (c: number) => void;
 }) {
+  const nickname = mockAuthApi.getCurrentAccount()?.nickname ?? "학습자";
   const [seats, setSeats] = useState<Seat[]>(makeSeats);
   const [showSeats, setShowSeats] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -826,17 +874,18 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
           ))}
 
           {/* Seated character */}
-          {seatedSeat && (() => {
-            const [col, row] = getSeatOrientation(seatedSeat.id);
-            return (
-              <div style={{ position: "absolute", left: `${(seatedSeat.x / MAP_W) * 100}%`, top: `${(seatedSeat.y / MAP_H) * 100}%`, transform: "translate(-50%, -90%)", zIndex: 25, textAlign: "center", pointerEvents: "none" }}>
-                <div style={{ filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.85))" }}>
-                  <SeatSprite charId={char} col={col} row={row} size={52} />
-                </div>
-                <div style={{ marginTop: 2, background: "rgba(16,8,2,0.88)", color: "#f5e6c8", fontSize: 9, padding: "2px 7px", border: "1px solid #8b5e3c", whiteSpace: "nowrap", fontFamily: ff, fontWeight: 700, boxShadow: "1px 1px 0 #3a1808" }}>역사왕123</div>
+          {seatedSeat && (
+            <>
+              {/* 캐릭터 이미지 — 좌석 좌표에 이미지 하단(바닥 접촉점)을 맞춤 */}
+              <div style={{ position: "absolute", left: `${(seatedSeat.x / MAP_W) * 100}%`, top: `${(seatedSeat.y / MAP_H) * 100}%`, transform: "translate(-50%, calc(-100% + 24px))", zIndex: 25, pointerEvents: "none", filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.85))" }}>
+                <SeatSprite charId={char} seatId={seatedSeat.id} size={52} />
               </div>
-            );
-          })()}
+              {/* 닉네임 — 캐릭터 이미지 높이와 무관하게 좌석 좌표 바로 아래 고정 */}
+              <div style={{ position: "absolute", left: `${(seatedSeat.x / MAP_W) * 100}%`, top: `${(seatedSeat.y / MAP_H) * 100}%`, transform: "translate(-50%, 18px)", zIndex: 25, textAlign: "center", pointerEvents: "none" }}>
+                <span style={{ background: "rgba(16,8,2,0.88)", color: "#f5e6c8", fontSize: 9, padding: "2px 7px", border: "1px solid #8b5e3c", whiteSpace: "nowrap", fontFamily: ff, fontWeight: 700, boxShadow: "1px 1px 0 #3a1808" }}>{nickname}</span>
+              </div>
+            </>
+          )}
 
           {/* Character select modal */}
           {showCharSelect && (
@@ -851,12 +900,12 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
             <div style={{ position: "absolute", top: 4, left: 6, width: 5, height: 5, background: "#3a1e06", borderRadius: 1 }} />
             <div style={{ position: "absolute", top: 4, right: 6, width: 5, height: 5, background: "#3a1e06", borderRadius: 1 }} />
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <div style={{ position: "relative", width: 52, height: 52, display: "flex", alignItems: "flex-end", justifyContent: "center", flexShrink: 0, background: "linear-gradient(135deg,#2c4a7c,#1a3060)", border: "2px solid #4a7ab8", boxShadow: "2px 2px 0 #0e1e40", overflow: "hidden" }}>
-                <CharSVG id={char} size={36} />
+              <div style={{ position: "relative", width: 52, height: 52, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: "linear-gradient(135deg,#2c4a7c,#1a3060)", border: "2px solid #4a7ab8", boxShadow: "2px 2px 0 #0e1e40", overflow: "hidden" }}>
+                <ProfileAvatar id={char} size={52} />
                 <div style={{ position: "absolute", bottom: 0, right: 0, fontSize: 9, background: "#f5c842", border: "1px solid #b88010", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "1px 1px 0 #7a6010" }}>✏️</div>
               </div>
               <div>
-                <div style={{ fontFamily: fs, fontWeight: 700, fontSize: 13, color: "#2a1808" }}>역사왕123</div>
+                <div style={{ fontFamily: fs, fontWeight: 700, fontSize: 13, color: "#2a1808" }}>{nickname}</div>
                 <div style={{ fontSize: 9, color: "#9a7040", fontFamily: ff, marginTop: 2 }}>캐릭터 클릭하여 변경</div>
                 <div style={{ fontSize: 10, marginTop: 3, color: "#7a5828", fontFamily: ff }}>⏱ 오늘 <strong style={{ color: "#c04040" }}>2h 34m</strong></div>
               </div>
@@ -1015,30 +1064,31 @@ function CharSVG({ id, size = 48 }: { id: number; size?: number }) {
   );
 }
 
-/* ── Character metadata ───────────────────────────────────────── */
-const CHARACTERS = [
-  { id: 1, era: "선사시대", gender: "남", label: "선사 남" },
-  { id: 2, era: "선사시대", gender: "여", label: "선사 여" },
-  { id: 3, era: "삼국(화랑)", gender: "남", label: "화랑 남" },
-  { id: 4, era: "삼국(화랑)", gender: "여", label: "화랑 여" },
-  { id: 5, era: "유생", gender: "남", label: "유생 남" },
-  { id: 6, era: "유생", gender: "여", label: "유생 여" },
-  { id: 7, era: "개화기", gender: "남", label: "개화기 남" },
-  { id: 8, era: "개화기", gender: "여", label: "개화기 여" },
-];
-
 /* ── Character select modal ───────────────────────────────────── */
 function CharSelectModal({ current, onSelect, onClose }: {
   current: number; onSelect: (id: number) => void; onClose: () => void;
 }) {
-  // Group by era
-  const eras = ["선사시대", "삼국(화랑)", "유생", "개화기"];
+  const [selected, setSelected] = useState(current);
+  const [nickname, setNickname] = useState(() => mockAuthApi.getCurrentAccount()?.nickname ?? "");
+  const [error, setError] = useState<string | null>(null);
+
+  function handleConfirm() {
+    if (!nickname.trim()) {
+      setError("닉네임을 입력해주세요");
+      return;
+    }
+    const email = mockAuthApi.getCurrentEmail();
+    if (email) void mockAuthApi.setProfile(email, { nickname: nickname.trim(), characterId: selected });
+    onSelect(selected);
+    onClose();
+  }
+
   return (
     <>
       <div onClick={onClose} style={{ position: "absolute", inset: 0, zIndex: 40, background: "rgba(0,0,0,0.62)" }} />
       <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 50,
         background: "linear-gradient(160deg,#fdf4db,#eedda0)", border: "3px solid #9a6a30",
-        boxShadow: "4px 5px 0 #5a3a08, 0 16px 48px rgba(0,0,0,0.75)", padding: "20px 22px", minWidth: 360 }}>
+        boxShadow: "4px 5px 0 #5a3a08, 0 16px 48px rgba(0,0,0,0.75)", padding: "20px 22px", width: 440 }}>
 
         {[0,1].map(i=>[
           <div key={`tl${i}`} style={{ position:"absolute", top:5, left:5, width:6, height:6, background:"#3a1e06", borderRadius:1 }}/>,
@@ -1046,44 +1096,52 @@ function CharSelectModal({ current, onSelect, onClose }: {
         ])}
 
         <div style={{ fontFamily: fs, fontWeight: 700, fontSize: 15, color: "#2a1808", marginBottom: 16, textAlign: "center" }}>
-          🎭 캐릭터 선택
+          🎭 캐릭터 변경
         </div>
 
-        {eras.map(era => {
-          const group = CHARACTERS.filter(c => c.era === era);
-          return (
-            <div key={era} style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#8b5e3c", fontFamily: fs, marginBottom: 8, letterSpacing: "0.06em",
-                borderBottom: "1px solid #c4a060", paddingBottom: 4 }}>{era}</div>
-              <div style={{ display: "flex", gap: 12 }}>
-                {group.map(ch => {
-                  const active = ch.id === current;
-                  return (
-                    <button key={ch.id} onClick={() => { onSelect(ch.id); onClose(); }}
-                      style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-                        padding: "10px 14px", cursor: "pointer",
-                        background: active ? "linear-gradient(135deg,#f5c842,#e8a820)" : "rgba(139,94,60,0.08)",
-                        border: active ? "2px solid #b88010" : "2px solid #c4a060",
-                        boxShadow: active ? "2px 3px 0 #8a6010" : "1px 2px 0 #9a7030",
-                        flex: 1,
-                      }}>
-                      <SeatSprite charId={ch.id} col={0} row={0} size={40} />
-                      <span style={{ fontSize: 10, color: active ? "#5a3010" : "#7a5828",
-                        fontWeight: active ? 700 : 500, fontFamily: ff }}>
-                        {ch.gender === "남" ? "♂" : "♀"} {ch.gender}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 16 }}>
+          {CHARACTERS.map(ch => {
+            const active = ch.id === selected;
+            return (
+              <button key={ch.id} onClick={() => setSelected(ch.id)}
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6,
+                  padding: "10px 6px", cursor: "pointer",
+                  background: active ? "linear-gradient(135deg,#f5c842,#e8a820)" : "rgba(139,94,60,0.08)",
+                  border: active ? "2px solid #b88010" : "2px solid #c4a060",
+                  boxShadow: active ? "2px 3px 0 #8a6010" : "1px 2px 0 #9a7030",
+                }}>
+                <ProfileAvatar id={ch.id} size={60} />
+                <span style={{ fontSize: 9, color: active ? "#5a3010" : "#7a5828",
+                  fontWeight: active ? 700 : 500, fontFamily: ff, textAlign: "center", lineHeight: 1.2 }}>
+                  {ch.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
 
-        <button onClick={onClose} style={{ marginTop: 6, width: "100%", padding: "8px", fontSize: 11,
-          background: "rgba(139,94,60,0.1)", border: "1px solid #c4a060", color: "#5a3010", cursor: "pointer", fontFamily: ff }}>
-          닫기
-        </button>
+        <label style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 }}>
+          <span style={{ fontSize: 11, color: "#7a5828", fontWeight: 700, fontFamily: ff }}>닉네임</span>
+          <input value={nickname} onChange={e => setNickname(e.target.value)} maxLength={16}
+            style={{ fontSize: 12, padding: "8px 12px", background: "rgba(240,220,160,0.45)", border: "1px solid #c4a060", outline: "none", color: "#2a1808", fontFamily: ff }} />
+        </label>
+
+        {error && (
+          <div style={{ fontSize: 11, color: "#7a1010", background: "rgba(192,64,64,0.12)", border: "1px solid #7a1010", padding: "6px 8px", marginBottom: 10 }}>
+            {error}
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: "8px", fontSize: 11,
+            background: "rgba(139,94,60,0.1)", border: "1px solid #c4a060", color: "#5a3010", cursor: "pointer", fontFamily: ff }}>
+            취소
+          </button>
+          <button onClick={handleConfirm} style={{ flex: 1, padding: "8px", fontSize: 11, fontWeight: 700,
+            background: "linear-gradient(135deg,#3a6030,#245020)", border: "2px solid #1a3010", color: "#c0f0a0", cursor: "pointer", fontFamily: ff }}>
+            저장하기
+          </button>
+        </div>
       </div>
     </>
   );

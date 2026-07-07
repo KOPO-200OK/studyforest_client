@@ -9,21 +9,21 @@ export default function LoginPage() {
   const location = useLocation();
   const justSignedUp = Boolean((location.state as { justSignedUp?: boolean } | null)?.justSignedUp);
 
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!username || !password) {
-      setError("아이디와 비밀번호를 입력해주세요");
+    if (!email || !password) {
+      setError("이메일과 비밀번호를 입력해주세요");
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      await mockAuthApi.login(username, password);
+      await mockAuthApi.login(email, password);
       navigate("/study-room", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "로그인에 실패했습니다");
@@ -49,12 +49,12 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <span style={{ fontSize: 11, color: C.inkMid, fontWeight: 700 }}>아이디</span>
+            <span style={{ fontSize: 11, color: C.inkMid, fontWeight: 700 }}>이메일</span>
             <Input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="아이디를 입력하세요"
-              autoComplete="username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="이메일을 입력하세요"
+              autoComplete="email"
               style={{ width: "100%" }}
             />
           </label>

@@ -3,6 +3,7 @@ import AppLayout from "@/layouts/AppLayout";
 
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
+import SelectCharacterPage from "@/pages/SelectCharacterPage";
 import StudyRoomPage from "@/pages/StudyRoomPage";
 import MyStudyPage from "@/pages/MyStudyPage";
 import JangwonPage from "@/pages/JangwonPage";
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/login" replace /> },
   { path: "login", element: <LoginPage /> },
   { path: "signup", element: <SignupPage /> },
+  { path: "select-character", element: <SelectCharacterPage /> },
   {
     element: <AppLayout />,
     children: [
