@@ -1,9 +1,10 @@
 import { NavLink } from "react-router-dom";
-import { Bell } from "lucide-react";
+import { Bell, Volume2, VolumeX } from "lucide-react";
 import { C, ff, fs } from "@/styles/tokens";
 import { mockAuthApi } from "@/api/mockAuthApi";
 import ProfileAvatar from "@/components/ProfileAvatar";
 import { DEFAULT_CHARACTER_ID } from "@/data/characters";
+import { useBgm } from "@/audio/BgmProvider";
 
 const NAV_ITEMS = [
   { to: "/study-room",   label: "스터디룸" },
@@ -17,6 +18,7 @@ export default function Nav() {
   const account = mockAuthApi.getCurrentAccount();
   const nickname = account?.nickname ?? "학습자";
   const characterId = account?.characterId ?? DEFAULT_CHARACTER_ID;
+  const bgm = useBgm();
   return (
     <nav style={{ height: 52, flexShrink: 0, display: "flex", alignItems: "center", padding: "0 16px", gap: 4, zIndex: 50, background: C.navBg, borderBottom: `3px solid ${C.navBr}`, boxShadow: `0 3px 0 ${C.sidebarBr}, 0 4px 20px rgba(0,0,0,0.65)` }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 20 }}>
@@ -36,6 +38,18 @@ export default function Nav() {
         </NavLink>
       ))}
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+        <button
+          onClick={bgm.toggle}
+          title={bgm.hasTracks ? (bgm.enabled ? "배경음악 끄기" : "배경음악 켜기") : "배경음악 파일이 없습니다"}
+          disabled={!bgm.hasTracks}
+          style={{ background: "none", border: "none", padding: 0, cursor: bgm.hasTracks ? "pointer" : "default", display: "flex", opacity: bgm.hasTracks ? 1 : 0.4 }}
+        >
+          {bgm.enabled ? (
+            <Volume2 size={17} style={{ color: "#c8a060" }} />
+          ) : (
+            <VolumeX size={17} style={{ color: "#887060" }} />
+          )}
+        </button>
         <Bell size={17} style={{ color: "#c8a060", cursor: "pointer" }} />
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 10px", background: "rgba(139,94,60,0.22)", border: "1px solid #8b5e3c" }}>
           <div style={{ width: 20, height: 20, flexShrink: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>

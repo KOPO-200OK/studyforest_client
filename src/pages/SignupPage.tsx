@@ -9,12 +9,14 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [name, setName] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!email || !password || !confirmPassword) {
+    if (!email || !password || !confirmPassword || !name || !birthDate) {
       setError("모든 항목을 입력해주세요");
       return;
     }
@@ -25,7 +27,7 @@ export default function SignupPage() {
     setLoading(true);
     setError(null);
     try {
-      await mockAuthApi.signup(email, password);
+      await mockAuthApi.signup(email, password, name, birthDate);
       navigate("/select-character", { replace: true, state: { email } });
     } catch (err) {
       setError(err instanceof Error ? err.message : "회원가입에 실패했습니다");
@@ -52,6 +54,30 @@ export default function SignupPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="이메일을 입력하세요"
               autoComplete="email"
+              style={{ width: "100%" }}
+            />
+          </label>
+
+          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ fontSize: 11, color: C.inkMid, fontWeight: 700 }}>이름</span>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="이름을 입력하세요"
+              autoComplete="name"
+              style={{ width: "100%" }}
+            />
+          </label>
+
+          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ fontSize: 11, color: C.inkMid, fontWeight: 700 }}>생년월일</span>
+            <Input
+              type="date"
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+              autoComplete="bday"
+              min="1900-01-01"
+              max="2099-12-31"
               style={{ width: "100%" }}
             />
           </label>

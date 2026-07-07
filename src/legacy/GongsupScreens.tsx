@@ -11,6 +11,9 @@ import morningImg   from "@/imports/image-3.png";
 import afternoonImg from "@/imports/image-7.png";
 import eveningImg   from "@/imports/image-5.png";
 
+// ── 맵: 서당 (고정 배경, 시간대 없음) ─────────────────────────────
+import seodangImg from "@/imports/dang_a.png";
+
 // ── 캐릭터 스프라이트 시트 (charId → 이미지) ─────────────────────
 // 8방향 시트: 4열 × 2행
 // col/row: 0=정면, 1=뒤, 2=앞우, 3=우, 4=앞좌, 5=뒤좌, 6=뒤우, 7=우
@@ -24,17 +27,94 @@ const SPRITE_SHEETS: Partial<Record<number, string>> = {
 // ── 캐릭터 방향별 누끼컷 (charId → 방향번호 → 이미지) ─────────────
 // 방향 번호 1~8: 0도=12시 방향(후면)에서 시계방향으로 45°씩 증가
 // 1=후면 2=뒤우 3=우측 4=앞우 5=정면 6=앞좌 7=좌측 8=뒤좌
-import hwarangF1 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_1.png";
-import hwarangF2 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_2.png";
-import hwarangF3 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_3.png";
-import hwarangF5 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_5.png";
-import hwarangF6 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_6.png";
-import hwarangF7 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_7.png";
-import hwarangF8 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_8.png";
+// (일부 캐릭터는 4번 방향 원본이 없어 비워둠 — 어떤 좌석도 4번을 쓰지 않아 문제없음)
+
+// 1. 선사시대 남
+import c1d1 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_1.png";
+import c1d2 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_2.png";
+import c1d3 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_3.png";
+import c1d5 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_5.png";
+import c1d6 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_6.png";
+import c1d7 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_7.png";
+import c1d8 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_8.png";
+
+// 2. 선사시대 여
+import c2d1 from "@/imports/character_cuts_outer_only_all/prehistoric_female/trimmed/석기_여_1.png";
+import c2d2 from "@/imports/character_cuts_outer_only_all/prehistoric_female/trimmed/석기_여_2.png";
+import c2d3 from "@/imports/character_cuts_outer_only_all/prehistoric_female/trimmed/석기_여_3.png";
+import c2d4 from "@/imports/character_cuts_outer_only_all/prehistoric_female/trimmed/석기_여_4.png";
+import c2d5 from "@/imports/character_cuts_outer_only_all/prehistoric_female/trimmed/석기_여_5.png";
+import c2d6 from "@/imports/character_cuts_outer_only_all/prehistoric_female/trimmed/석기_여_6.png";
+import c2d7 from "@/imports/character_cuts_outer_only_all/prehistoric_female/trimmed/석기_여_7.png";
+import c2d8 from "@/imports/character_cuts_outer_only_all/prehistoric_female/trimmed/석기_여_8.png";
+
+// 3. 화랑 남
+import c3d1 from "@/imports/character_cuts_outer_only_all/hwarang_male/trimmed/화랑_남_1.png";
+import c3d2 from "@/imports/character_cuts_outer_only_all/hwarang_male/trimmed/화랑_남_2.png";
+import c3d3 from "@/imports/character_cuts_outer_only_all/hwarang_male/trimmed/화랑_남_3.png";
+import c3d5 from "@/imports/character_cuts_outer_only_all/hwarang_male/trimmed/화랑_남_5.png";
+import c3d6 from "@/imports/character_cuts_outer_only_all/hwarang_male/trimmed/화랑_남_6.png";
+import c3d7 from "@/imports/character_cuts_outer_only_all/hwarang_male/trimmed/화랑_남_7.png";
+import c3d8 from "@/imports/character_cuts_outer_only_all/hwarang_male/trimmed/화랑_남_8.png";
+
+// 4. 화랑 여
+import c4d1 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_1.png";
+import c4d2 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_2.png";
+import c4d3 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_3.png";
+import c4d5 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_5.png";
+import c4d6 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_6.png";
+import c4d7 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_7.png";
+import c4d8 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_8.png";
+
+// 5. 유생 남
+import c5d1 from "@/imports/character_cuts_outer_only_all/scholar_male/trimmed/유생_남_1.png";
+import c5d2 from "@/imports/character_cuts_outer_only_all/scholar_male/trimmed/유생_남_2.png";
+import c5d3 from "@/imports/character_cuts_outer_only_all/scholar_male/trimmed/유생_남_3.png";
+import c5d4 from "@/imports/character_cuts_outer_only_all/scholar_male/trimmed/유생_남_4.png";
+import c5d5 from "@/imports/character_cuts_outer_only_all/scholar_male/trimmed/유생_남_5.png";
+import c5d6 from "@/imports/character_cuts_outer_only_all/scholar_male/trimmed/유생_남_6.png";
+import c5d7 from "@/imports/character_cuts_outer_only_all/scholar_male/trimmed/유생_남_7.png";
+import c5d8 from "@/imports/character_cuts_outer_only_all/scholar_male/trimmed/유생_남_8.png";
+
+// 6. 유생 여
+import c6d1 from "@/imports/character_cuts_outer_only_all/scholar_female/trimmed/유생_여_1.png";
+import c6d2 from "@/imports/character_cuts_outer_only_all/scholar_female/trimmed/유생_여_2.png";
+import c6d3 from "@/imports/character_cuts_outer_only_all/scholar_female/trimmed/유생_여_3.png";
+import c6d4 from "@/imports/character_cuts_outer_only_all/scholar_female/trimmed/유생_여_4.png";
+import c6d5 from "@/imports/character_cuts_outer_only_all/scholar_female/trimmed/유생_여_5.png";
+import c6d6 from "@/imports/character_cuts_outer_only_all/scholar_female/trimmed/유생_여_6.png";
+import c6d7 from "@/imports/character_cuts_outer_only_all/scholar_female/trimmed/유생_여_7.png";
+import c6d8 from "@/imports/character_cuts_outer_only_all/scholar_female/trimmed/유생_여_8.png";
+
+// 7. 개화기 남
+import c7d1 from "@/imports/character_cuts_outer_only_all/modern_male/trimmed/근대_남_1.png";
+import c7d2 from "@/imports/character_cuts_outer_only_all/modern_male/trimmed/근대_남_2.png";
+import c7d3 from "@/imports/character_cuts_outer_only_all/modern_male/trimmed/근대_남_3.png";
+import c7d4 from "@/imports/character_cuts_outer_only_all/modern_male/trimmed/근대_남_4.png";
+import c7d5 from "@/imports/character_cuts_outer_only_all/modern_male/trimmed/근대_남_5.png";
+import c7d6 from "@/imports/character_cuts_outer_only_all/modern_male/trimmed/근대_남_6.png";
+import c7d7 from "@/imports/character_cuts_outer_only_all/modern_male/trimmed/근대_남_7.png";
+import c7d8 from "@/imports/character_cuts_outer_only_all/modern_male/trimmed/근대_남_8.png";
+
+// 8. 개화기 여
+import c8d1 from "@/imports/character_cuts_outer_only_all/modern_female/trimmed/근대_여_1.png";
+import c8d2 from "@/imports/character_cuts_outer_only_all/modern_female/trimmed/근대_여_2.png";
+import c8d3 from "@/imports/character_cuts_outer_only_all/modern_female/trimmed/근대_여_3.png";
+import c8d4 from "@/imports/character_cuts_outer_only_all/modern_female/trimmed/근대_여_4.png";
+import c8d5 from "@/imports/character_cuts_outer_only_all/modern_female/trimmed/근대_여_5.png";
+import c8d6 from "@/imports/character_cuts_outer_only_all/modern_female/trimmed/근대_여_6.png";
+import c8d7 from "@/imports/character_cuts_outer_only_all/modern_female/trimmed/근대_여_7.png";
+import c8d8 from "@/imports/character_cuts_outer_only_all/modern_female/trimmed/근대_여_8.png";
 
 const CUTOUT_SPRITES: Partial<Record<number, Partial<Record<number, string>>>> = {
-  4: { 1: hwarangF1, 2: hwarangF2, 3: hwarangF3, 5: hwarangF5, 6: hwarangF6, 7: hwarangF7, 8: hwarangF8 },
-  // 나머지 캐릭터는 누끼컷 추가 시 여기에 등록
+  1: { 1: c1d1, 2: c1d2, 3: c1d3, 5: c1d5, 6: c1d6, 7: c1d7, 8: c1d8 },
+  2: { 1: c2d1, 2: c2d2, 3: c2d3, 4: c2d4, 5: c2d5, 6: c2d6, 7: c2d7, 8: c2d8 },
+  3: { 1: c3d1, 2: c3d2, 3: c3d3, 5: c3d5, 6: c3d6, 7: c3d7, 8: c3d8 },
+  4: { 1: c4d1, 2: c4d2, 3: c4d3, 5: c4d5, 6: c4d6, 7: c4d7, 8: c4d8 },
+  5: { 1: c5d1, 2: c5d2, 3: c5d3, 4: c5d4, 5: c5d5, 6: c5d6, 7: c5d7, 8: c5d8 },
+  6: { 1: c6d1, 2: c6d2, 3: c6d3, 4: c6d4, 5: c6d5, 6: c6d6, 7: c6d7, 8: c6d8 },
+  7: { 1: c7d1, 2: c7d2, 3: c7d3, 4: c7d4, 5: c7d5, 6: c7d6, 7: c7d7, 8: c7d8 },
+  8: { 1: c8d1, 2: c8d2, 3: c8d3, 4: c8d4, 5: c8d5, 6: c8d6, 7: c8d7, 8: c8d8 },
 };
 
 // 누끼컷은 이미지 여백을 딱 맞게 잘라둔 상태라 고정 높이로 렌더링 — 좌석 좌표와의
@@ -43,6 +123,7 @@ const CUTOUT_HEIGHT = 70;
 
 // 좌석별 방향 번호 (좌석/벤치가 놓인 방향 — 캐릭터와 무관하게 고정)
 function getSeatDirection(seatId: number): number {
+  if (seatId >= 101) return 1;                                                          // 서당: 전원 선생님(정면 상단)을 바라봄 = 후면
   if ([1, 10].includes(seatId)) return 5;                                              // 정면
   if ([2, 3, 4, 5, 6, 7, 8, 9, 14, 15, 20, 21].includes(seatId)) return 1;              // 후면
   if ([11, 18, 23].includes(seatId)) return 7;                                          // 왼쪽 보기
@@ -55,6 +136,7 @@ function getSeatDirection(seatId: number): number {
 import ProfileAvatar from "@/components/ProfileAvatar";
 import { mockAuthApi } from "@/api/mockAuthApi";
 import { CHARACTERS } from "@/data/characters";
+import { getDisabledSeatIds } from "@/data/seatConfig";
 
 // 스프라이트 시트: 4열 × 2행 배치
 const SHEET_COLS = 4;
@@ -474,51 +556,91 @@ interface Seat { id: number; x: number; y: number; zone: string; status: SeatSta
 const MAP_W = 1022;
 const MAP_H = 620;
 
-const RAW_SEATS: Omit<Seat, "status">[] = [
-  { id: 1,  x: 86,  y: 131, zone: "집중의 숲" },
-  { id: 2,  x: 84,  y: 175, zone: "집중의 숲" },
+export const RAW_SEATS: Omit<Seat, "status">[] = [
+  { id: 1,  x: 86,  y: 145, zone: "집중의 숲" },
+  { id: 2,  x: 88,  y: 190, zone: "집중의 숲" },
   { id: 3,  x: 188, y: 158, zone: "집중의 숲" },
-  { id: 4,  x: 350, y: 170, zone: "집중의 숲" },
-  { id: 5,  x: 469, y: 173, zone: "집중의 숲" },
-  { id: 6,  x: 469, y: 272, zone: "집중의 숲" },
-  { id: 7,  x: 349, y: 286, zone: "집중의 숲" },
-  { id: 8,  x: 180, y: 292, zone: "집중의 숲" },
-  { id: 9,  x: 85,  y: 294, zone: "집중의 숲" },
-  { id: 10, x: 84,  y: 252, zone: "집중의 숲" },
-  { id: 11, x: 496, y: 520, zone: "계곡가 자유존" },
-  { id: 12, x: 667, y: 462, zone: "집현전 공터" },
-  { id: 13, x: 667, y: 505, zone: "집현전 공터" },
+  { id: 4,  x: 350, y: 190, zone: "집중의 숲" },
+  { id: 5,  x: 465, y: 185, zone: "집중의 숲" },
+  { id: 6,  x: 463, y: 272, zone: "집중의 숲" },
+  { id: 7,  x: 349, y: 305, zone: "집중의 숲" },
+  { id: 8,  x: 175, y: 304, zone: "집중의 숲" },
+  { id: 9,  x: 87,  y: 304, zone: "집중의 숲" },
+  { id: 10, x: 84,  y: 262, zone: "집중의 숲" },
+  { id: 11, x: 500, y: 525, zone: "계곡가 자유존" },
+  { id: 12, x: 667, y: 455, zone: "집현전 공터" },
+  { id: 13, x: 667, y: 497, zone: "집현전 공터" },
   { id: 14, x: 726, y: 529, zone: "집현전 공터" },
-  { id: 15, x: 788, y: 529, zone: "집현전 공터" },
-  { id: 16, x: 855, y: 529, zone: "집현전 공터" },
-  { id: 17, x: 910, y: 515, zone: "집현전 공터" },
-  { id: 18, x: 909, y: 471, zone: "집현전 공터" },
-  { id: 19, x: 697, y: 265, zone: "세계수 광장" },
-  { id: 20, x: 755, y: 292, zone: "세계수 광장" },
-  { id: 21, x: 857, y: 292, zone: "세계수 광장" },
+  { id: 15, x: 784, y: 532, zone: "집현전 공터" },
+  { id: 16, x: 845, y: 529, zone: "집현전 공터" },
+  { id: 17, x: 902, y: 506, zone: "집현전 공터" },
+  { id: 18, x: 905, y: 471, zone: "집현전 공터" },
+  { id: 19, x: 698, y: 275, zone: "세계수 광장" },
+  { id: 20, x: 755, y: 295, zone: "세계수 광장" },
+  { id: 21, x: 855, y: 298, zone: "세계수 광장" },
   { id: 22, x: 918, y: 263, zone: "세계수 광장" },
   { id: 23, x: 961, y: 214, zone: "세계수 광장" },
   { id: 24, x: 642, y: 217, zone: "세계수 광장" },
 ];
 
+// 서당 맵 좌석 (2줄 × 10칸, id 101~120 — 공숲 좌석 id와 겹치지 않게 구분)
+export const SEODANG_SEATS: Omit<Seat, "status">[] = [
+  { id: 101, x: 88,  y: 327, zone: "서당 앞줄" },
+  { id: 102, x: 181, y: 327, zone: "서당 앞줄" },
+  { id: 103, x: 275, y: 327, zone: "서당 앞줄" },
+  { id: 104, x: 368, y: 327, zone: "서당 앞줄" },
+  { id: 105, x: 461, y: 327, zone: "서당 앞줄" },
+  { id: 106, x: 564, y: 327, zone: "서당 앞줄" },
+  { id: 107, x: 658, y: 327, zone: "서당 앞줄" },
+  { id: 108, x: 751, y: 327, zone: "서당 앞줄" },
+  { id: 109, x: 844, y: 327, zone: "서당 앞줄" },
+  { id: 110, x: 937, y: 327, zone: "서당 앞줄" },
+  { id: 111, x: 88,  y: 410, zone: "서당 뒷줄" },
+  { id: 112, x: 181, y: 410, zone: "서당 뒷줄" },
+  { id: 113, x: 275, y: 410, zone: "서당 뒷줄" },
+  { id: 114, x: 368, y: 410, zone: "서당 뒷줄" },
+  { id: 115, x: 461, y: 410, zone: "서당 뒷줄" },
+  { id: 116, x: 564, y: 410, zone: "서당 뒷줄" },
+  { id: 117, x: 658, y: 410, zone: "서당 뒷줄" },
+  { id: 118, x: 751, y: 410, zone: "서당 뒷줄" },
+  { id: 119, x: 844, y: 410, zone: "서당 뒷줄" },
+  { id: 120, x: 937, y: 410, zone: "서당 뒷줄" },
+];
+
 // pre-occupied seats for visual context
 const OCCUPIED_IDS = new Set<number>([]);
-const DISABLED_IDS = new Set<number>([]);
 
-function makeSeats(): Seat[] {
-  return RAW_SEATS.map(s => ({
+function makeSeats(rawSeats: Omit<Seat, "status">[]): Seat[] {
+  const disabledIds = new Set(getDisabledSeatIds());
+  return rawSeats.map(s => ({
     ...s,
-    status: DISABLED_IDS.has(s.id) ? "disabled"
+    status: disabledIds.has(s.id) ? "disabled"
           : OCCUPIED_IDS.has(s.id) ? "occupied"
           : "available",
   }));
 }
 
+export type MapId = "forest" | "seodang";
+
+interface MapDef {
+  id: MapId;
+  label: string;
+  emoji: string;
+  seats: Omit<Seat, "status">[];
+  hasTimeOfDay: boolean;
+  staticBg?: string;
+}
+
+const MAPS: Record<MapId, MapDef> = {
+  forest:  { id: "forest",  label: "공숲",  emoji: "🌲", seats: RAW_SEATS,     hasTimeOfDay: true },
+  seodang: { id: "seodang", label: "서당",  emoji: "📜", seats: SEODANG_SEATS, hasTimeOfDay: false, staticBg: seodangImg },
+};
+
 const SEAT_STYLE: Record<SeatStatus, { bg: string; border: string; text: string; glow: string }> = {
-  available: { bg: "rgba(46,96,32,0.88)",   border: "#1a5010", text: "#c8e0b8",  glow: "rgba(60,120,40,0.35)" },
+  available: { bg: "rgba(226, 242, 255, 0.8)",   border: "#141050", text: "#000000",  glow: "rgba(60,120,40,0.35)" },
   selected:  { bg: "rgba(200,168,48,0.95)", border: "#906800", text: "#241408",  glow: "rgba(200,168,48,0.4)" },
-  occupied:  { bg: "rgba(90,54,30,0.85)",   border: "#3a2008", text: "#c8b898",  glow: "none" },
-  disabled:  { bg: "rgba(40,40,40,0.65)",   border: "#222222", text: "#686868",  glow: "none" },
+  occupied:  { bg: "rgba(94, 94, 94, 0.85)",   border: "#3a2008", text: "#c8b898",  glow: "none" },
+  disabled:  { bg: "rgba(202, 0, 0, 0.65)",   border: "#222222", text: "#686868",  glow: "none" },
 };
 
 function SeatMarker({ seat, isSelected, onClick }: { seat: Seat; isSelected: boolean; onClick: (id: number) => void }) {
@@ -559,13 +681,27 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   char: number; setChar: (c: number) => void;
 }) {
   const nickname = mockAuthApi.getCurrentAccount()?.nickname ?? "학습자";
-  const [seats, setSeats] = useState<Seat[]>(makeSeats);
+  const [mapId, setMapId] = useState<MapId>("forest");
+  const [channel, setChannel] = useState(1);
+  const [seats, setSeats] = useState<Seat[]>(() => makeSeats(MAPS.forest.seats));
   const [showSeats, setShowSeats] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [seatedAt, setSeatedAt] = useState<number | null>(null);
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>(getTimeOfDay);
   const [showCharSelect, setShowCharSelect] = useState(false);
   const [todoOpen, setTodoOpen] = useState(true);
+
+  const currentMap = MAPS[mapId];
+
+  function handleSelectMap(id: MapId) {
+    if (id === mapId) return;
+    setMapId(id);
+    setSeats(makeSeats(MAPS[id].seats));
+    setSeatedAt(null);
+    setSelectedId(null);
+    setShowSeats(false);
+    setTimerOn(false);
+  }
 
   // ── 타이머 ──────────────────────────────────────────────────────
   const [timerSecs, setTimerSecs] = useState(0);
@@ -617,6 +753,8 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
     "세계수 광장":  "#8a2a4a",
     "계곡가 자유존":"#1a4a6a",
     "집현전 공터":  "#6a4010",
+    "서당 앞줄":    "#5a3a18",
+    "서당 뒷줄":    "#3a2a14",
   };
 
   return (
@@ -624,6 +762,32 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
 
       {/* LEFT SIDEBAR */}
       <div style={{ width: 268, flexShrink: 0, display: "flex", flexDirection: "column", gap: 10, padding: 10, overflowY: "auto", overflowX: "hidden", background: C.sidebarBg, borderRight: `3px solid ${C.sidebarBr}`, boxShadow: "inset -2px 0 6px rgba(0,0,0,0.35)" }}>
+
+        {/* 맵 · 채널 선택 */}
+        <Panel title="맵 · 채널" icon={<span style={{ fontSize: 13 }}>🗺️</span>} accent="linear-gradient(90deg,#162e12,#1e3e18)">
+          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+            {Object.values(MAPS).map(m => (
+              <button key={m.id} onClick={() => handleSelectMap(m.id)}
+                style={{ flex: 1, padding: "6px 4px", fontSize: 11, fontWeight: 700, fontFamily: ff, cursor: "pointer",
+                  background: mapId === m.id ? "linear-gradient(135deg,#3a6030,#1e4018)" : "rgba(139,94,60,0.12)",
+                  color: mapId === m.id ? "#c0f0a0" : "#9a7040",
+                  border: `2px solid ${mapId === m.id ? "#1a3010" : "#5a4020"}` }}>
+                {m.emoji} {m.label}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            {[1, 2, 3].map(ch => (
+              <button key={ch} onClick={() => setChannel(ch)}
+                style={{ flex: 1, padding: "5px 4px", fontSize: 11, fontWeight: 700, fontFamily: ff, cursor: "pointer",
+                  background: channel === ch ? "rgba(200,160,48,0.25)" : "rgba(139,94,60,0.08)",
+                  color: channel === ch ? "#f5c842" : "#7a5828",
+                  border: `1px solid ${channel === ch ? "#c8a030" : "#5a4020"}` }}>
+                {ch}채널
+              </button>
+            ))}
+          </div>
+        </Panel>
 
         {/* Seat entry panel */}
         <Panel title="좌석 선택" icon={<span style={{ fontSize: 13 }}>🪑</span>} accent="linear-gradient(90deg,#162e12,#1e3e18)">
@@ -828,45 +992,49 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
               </div>
             ))}
           </div>
-          <div style={{ marginTop: 8, fontSize: 10, color: "#7a8060", textAlign: "center", fontFamily: ff }}>총 24명 접속 중</div>
+          <div style={{ marginTop: 8, fontSize: 10, color: "#7a8060", textAlign: "center", fontFamily: ff }}>총 {seats.length}명 접속 중 · {channel}채널</div>
         </Panel>
       </div>
 
       {/* CENTER MAP — aspect-ratio locked to 1022×620 */}
-      <div style={{ flex: 1, minWidth: 0, background: timeMeta.bg, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", transition: "background 0.8s" }}>
+      <div style={{ flex: 1, minWidth: 0, background: currentMap.hasTimeOfDay ? timeMeta.bg : "#0e0a06", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", transition: "background 0.8s" }}>
         <div style={{ position: "relative", width: `min(100%, calc((100vh - 52px) * ${MAP_W / MAP_H}))`, aspectRatio: `${MAP_W} / ${MAP_H}`, overflow: "hidden" }}>
 
-          {/* Map image — 시간대 필터 적용 */}
+          {/* Map image — 시간대 필터 적용(공숲) 또는 고정 배경(서당) */}
           <img
-            src={timeMeta.src}
-            alt="공숲 학습 맵"
-            style={{ display: "block", width: "100%", height: "100%", imageRendering: "pixelated", filter: timeMeta.filter, transition: "filter 0.8s" }}
+            src={currentMap.hasTimeOfDay ? timeMeta.src : currentMap.staticBg}
+            alt={currentMap.label}
+            style={{ display: "block", width: "100%", height: "100%", imageRendering: "pixelated", filter: currentMap.hasTimeOfDay ? timeMeta.filter : "none", transition: "filter 0.8s" }}
           />
 
-          {/* 시간대 색상 오버레이 */}
-          <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: timeMeta.overlay, transition: "background 0.8s", mixBlendMode: "multiply" }} />
+          {/* 시간대 색상 오버레이 (공숲만) */}
+          {currentMap.hasTimeOfDay && (
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: timeMeta.overlay, transition: "background 0.8s", mixBlendMode: "multiply" }} />
+          )}
 
           {/* Vignette */}
           <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse at 50% 50%, transparent 60%, rgba(6,12,4,0.45) 100%)" }} />
 
-          {/* 시간대 전환 버튼 — 우하단 */}
-          <div style={{ position: "absolute", bottom: 12, left: 12, zIndex: 30, display: "flex", gap: 6 }}>
-            {TIME_CYCLE.map(t => {
-              const m = TIME_META[t];
-              const active = t === timeOfDay;
-              return (
-                <button key={t} onClick={() => setTimeOfDay(t)} title={m.label}
-                  style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: ff, transition: "all 0.15s",
-                    background: active ? "rgba(245,200,66,0.95)" : "rgba(16,8,2,0.78)",
-                    color: active ? "#2a1808" : "#c8a060",
-                    border: active ? "2px solid #c49820" : "2px solid #5a3010",
-                    boxShadow: active ? "0 0 0 2px rgba(245,200,66,0.35), 2px 2px 0 #8a6010" : "2px 2px 0 #2a1006",
-                  }}>
-                  <span style={{ fontSize: 14 }}>{m.emoji}</span>{m.label}
-                </button>
-              );
-            })}
-          </div>
+          {/* 시간대 전환 버튼 — 우하단 (공숲만) */}
+          {currentMap.hasTimeOfDay && (
+            <div style={{ position: "absolute", bottom: 12, left: 12, zIndex: 30, display: "flex", gap: 6 }}>
+              {TIME_CYCLE.map(t => {
+                const m = TIME_META[t];
+                const active = t === timeOfDay;
+                return (
+                  <button key={t} onClick={() => setTimeOfDay(t)} title={m.label}
+                    style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: ff, transition: "all 0.15s",
+                      background: active ? "rgba(245,200,66,0.95)" : "rgba(16,8,2,0.78)",
+                      color: active ? "#2a1808" : "#c8a060",
+                      border: active ? "2px solid #c49820" : "2px solid #5a3010",
+                      boxShadow: active ? "0 0 0 2px rgba(245,200,66,0.35), 2px 2px 0 #8a6010" : "2px 2px 0 #2a1006",
+                    }}>
+                    <span style={{ fontSize: 14 }}>{m.emoji}</span>{m.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Seat markers */}
           {showSeats && seats.map(seat => (
@@ -877,11 +1045,11 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
           {seatedSeat && (
             <>
               {/* 캐릭터 이미지 — 좌석 좌표에 이미지 하단(바닥 접촉점)을 맞춤 */}
-              <div style={{ position: "absolute", left: `${(seatedSeat.x / MAP_W) * 100}%`, top: `${(seatedSeat.y / MAP_H) * 100}%`, transform: "translate(-50%, calc(-100% + 24px))", zIndex: 25, pointerEvents: "none", filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.85))" }}>
+              <div style={{ position: "absolute", left: `${(seatedSeat.x / MAP_W) * 100}%`, top: `${(seatedSeat.y / MAP_H) * 100}%`, transform: "translate(-50%, calc(-100% + 5px))", zIndex: 25, pointerEvents: "none", filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.85))" }}>
                 <SeatSprite charId={char} seatId={seatedSeat.id} size={52} />
               </div>
               {/* 닉네임 — 캐릭터 이미지 높이와 무관하게 좌석 좌표 바로 아래 고정 */}
-              <div style={{ position: "absolute", left: `${(seatedSeat.x / MAP_W) * 100}%`, top: `${(seatedSeat.y / MAP_H) * 100}%`, transform: "translate(-50%, 18px)", zIndex: 25, textAlign: "center", pointerEvents: "none" }}>
+              <div style={{ position: "absolute", left: `${(seatedSeat.x / MAP_W) * 100}%`, top: `${(seatedSeat.y / MAP_H) * 100}%`, transform: "translate(-50%, 2px)", zIndex: 25, textAlign: "center", pointerEvents: "none" }}>
                 <span style={{ background: "rgba(16,8,2,0.88)", color: "#f5e6c8", fontSize: 9, padding: "2px 7px", border: "1px solid #8b5e3c", whiteSpace: "nowrap", fontFamily: ff, fontWeight: 700, boxShadow: "1px 1px 0 #3a1808" }}>{nickname}</span>
               </div>
             </>

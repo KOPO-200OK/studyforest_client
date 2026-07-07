@@ -13,6 +13,8 @@ const CURRENT_EMAIL_KEY = "gongsoop_current_email";
 export interface MockAccount {
   email: string;
   password: string;
+  name: string;
+  birthDate: string; // YYYY-MM-DD
   nickname?: string;
   characterId?: number;
 }
@@ -20,13 +22,20 @@ export interface MockAccount {
 function loadAccounts(): MockAccount[] {
   const raw = localStorage.getItem(ACCOUNTS_KEY);
   if (raw) return JSON.parse(raw) as MockAccount[];
-  const seed: MockAccount[] = [{ email: "admin", password: "1234", nickname: "관리자", characterId: DEFAULT_CHARACTER_ID }];
+  const seed: MockAccount[] = [{ email: "admin", password: "1234", name: "관리자", birthDate: "2000-01-01", nickname: "관리자", characterId: DEFAULT_CHARACTER_ID }];
   localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(seed));
   return seed;
 }
 
 function saveAccounts(accounts: MockAccount[]) {
   localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+}
+
+function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!domain) return email;
+  const visible = local.slice(0, Math.min(2, local.length));
+  return `${visible}${"*".repeat(Math.max(local.length - visible.length, 3))}@${domain}`;
 }
 
 export const mockAuthApi = {
@@ -38,12 +47,12 @@ export const mockAuthApi = {
     localStorage.setItem(CURRENT_EMAIL_KEY, email);
   },
 
-  async signup(email: string, password: string): Promise<void> {
+  async signup(email: string, password: string, name: string, birthDate: string): Promise<void> {
     const accounts = loadAccounts();
     if (accounts.some((a) => a.email === email)) {
       throw new Error("이미 사용 중인 이메일입니다");
     }
-    accounts.push({ email, password });
+    accounts.push({ email, password, name, birthDate });
     saveAccounts(accounts);
   },
 
@@ -74,5 +83,30 @@ export const mockAuthApi = {
     const email = mockAuthApi.getCurrentEmail();
     if (!email) return null;
     return loadAccounts().find((a) => a.email === email) ?? null;
+  },
+
+  /** 관리자 회원 관리 화면용 — 비밀번호는 빼고 반환 */
+  listAccounts(): Omit<MockAccount, "password">[] {
+    return loadAccounts().map(({ password: _password, ...rest }) => rest);
+  },
+
+  /** 관리자 회원 관리 화면에서 계정 삭제 */
+  deleteAccount(email: string): void {
+    const accounts = loadAccounts().filter((a) => a.email !== email);
+    saveAccounts(accounts);
+  },
+
+  /** 아이디(이메일) 찾기 — 이름+생년월일 일치하는 계정의 마스킹된 이메일 목록 */
+  async findEmail(name: string, birthDate: string): Promise<string[]> {
+    const matches = loadAccounts().filter((a) => a.name === name && a.birthDate === birthDate);
+    if (matches.length === 0) throw new Error("일치하는 계정을 찾을 수 없습니다");
+    return matches.map((a) => maskEmail(a.email));
+  },
+
+  /** 비밀번호 찾기 — 이메일+이름+생년월일 모두 일치해야 비밀번호 반환 */
+  async findPassword(email: string, name: string, birthDate: string): Promise<string> {
+    const account = loadAccounts().find((a) => a.email === email && a.name === name && a.birthDate === birthDate);
+    if (!account) throw new Error("일치하는 계정을 찾을 수 없습니다");
+    return account.password;
   },
 };
