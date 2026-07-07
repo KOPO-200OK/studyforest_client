@@ -76,6 +76,8 @@ export default function SignupPage() {
               value={birthDate}
               onChange={(e) => setBirthDate(e.target.value)}
               autoComplete="bday"
+              min="1900-01-01"
+              max="2099-12-31"
               style={{ width: "100%" }}
             />
           </label>

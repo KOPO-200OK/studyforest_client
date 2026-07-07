@@ -1,0 +1,61 @@
+import { useState } from "react";
+import { Card, Button } from "@/components/ui";
+import { fs, ff, C } from "@/styles/tokens";
+import { mockAuthApi } from "@/api/mockAuthApi";
+import { CHARACTERS } from "@/data/characters";
+
+export default function AdminMembersPage() {
+  const [accounts, setAccounts] = useState(() => mockAuthApi.listAccounts());
+
+  function handleDelete(email: string) {
+    if (!confirm(`${email} 계정을 삭제할까요?`)) return;
+    mockAuthApi.deleteAccount(email);
+    setAccounts(mockAuthApi.listAccounts());
+  }
+
+  return (
+    <div>
+      <p style={{ fontFamily: ff, color: "#9aaa80", fontSize: 12, marginBottom: 16 }}>
+        가입된 회원 {accounts.length}명
+      </p>
+
+      <Card style={{ padding: 0, overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: ff, fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: "rgba(139,94,60,0.15)", textAlign: "left" }}>
+              {["이메일", "이름", "생년월일", "닉네임", "캐릭터", ""].map((h) => (
+                <th key={h} style={{ padding: "10px 14px", color: "#7a5828", fontWeight: 700, borderBottom: `1px solid ${C.hanjiB}` }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {accounts.map((a) => {
+              const character = CHARACTERS.find((c) => c.id === a.characterId);
+              return (
+                <tr key={a.email}>
+                  <td style={{ padding: "10px 14px", color: "#2a1808", borderBottom: `1px solid ${C.hanjiB}` }}>{a.email}</td>
+                  <td style={{ padding: "10px 14px", color: "#2a1808", borderBottom: `1px solid ${C.hanjiB}` }}>{a.name}</td>
+                  <td style={{ padding: "10px 14px", color: "#2a1808", borderBottom: `1px solid ${C.hanjiB}` }}>{a.birthDate}</td>
+                  <td style={{ padding: "10px 14px", color: "#2a1808", borderBottom: `1px solid ${C.hanjiB}` }}>{a.nickname ?? "-"}</td>
+                  <td style={{ padding: "10px 14px", color: "#2a1808", borderBottom: `1px solid ${C.hanjiB}` }}>{character?.label ?? "-"}</td>
+                  <td style={{ padding: "10px 14px", borderBottom: `1px solid ${C.hanjiB}`, textAlign: "right" }}>
+                    <Button variant="red" onClick={() => handleDelete(a.email)} style={{ padding: "4px 10px", fontSize: 10 }}>
+                      삭제
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })}
+            {accounts.length === 0 && (
+              <tr>
+                <td colSpan={6} style={{ padding: 24, textAlign: "center", color: "#7a5828", fontFamily: fs }}>
+                  가입된 회원이 없습니다
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </Card>
+    </div>
+  );
+}

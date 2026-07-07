@@ -31,6 +31,13 @@ function saveAccounts(accounts: MockAccount[]) {
   localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
 }
 
+function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!domain) return email;
+  const visible = local.slice(0, Math.min(2, local.length));
+  return `${visible}${"*".repeat(Math.max(local.length - visible.length, 3))}@${domain}`;
+}
+
 export const mockAuthApi = {
   async login(email: string, password: string): Promise<void> {
     const accounts = loadAccounts();
@@ -76,5 +83,30 @@ export const mockAuthApi = {
     const email = mockAuthApi.getCurrentEmail();
     if (!email) return null;
     return loadAccounts().find((a) => a.email === email) ?? null;
+  },
+
+  /** 관리자 회원 관리 화면용 — 비밀번호는 빼고 반환 */
+  listAccounts(): Omit<MockAccount, "password">[] {
+    return loadAccounts().map(({ password: _password, ...rest }) => rest);
+  },
+
+  /** 관리자 회원 관리 화면에서 계정 삭제 */
+  deleteAccount(email: string): void {
+    const accounts = loadAccounts().filter((a) => a.email !== email);
+    saveAccounts(accounts);
+  },
+
+  /** 아이디(이메일) 찾기 — 이름+생년월일 일치하는 계정의 마스킹된 이메일 목록 */
+  async findEmail(name: string, birthDate: string): Promise<string[]> {
+    const matches = loadAccounts().filter((a) => a.name === name && a.birthDate === birthDate);
+    if (matches.length === 0) throw new Error("일치하는 계정을 찾을 수 없습니다");
+    return matches.map((a) => maskEmail(a.email));
+  },
+
+  /** 비밀번호 찾기 — 이메일+이름+생년월일 모두 일치해야 비밀번호 반환 */
+  async findPassword(email: string, name: string, birthDate: string): Promise<string> {
+    const account = loadAccounts().find((a) => a.email === email && a.name === name && a.birthDate === birthDate);
+    if (!account) throw new Error("일치하는 계정을 찾을 수 없습니다");
+    return account.password;
   },
 };

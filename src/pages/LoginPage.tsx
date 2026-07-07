@@ -88,6 +88,12 @@ export default function LoginPage() {
             회원가입
           </Link>
         </div>
+
+        <div style={{ textAlign: "center", fontSize: 11, color: C.inkMid, display: "flex", justifyContent: "center", gap: 10 }}>
+          <Link to="/find-id" style={{ color: C.inkMid, textDecoration: "none" }}>아이디 찾기</Link>
+          <span>·</span>
+          <Link to="/find-password" style={{ color: C.inkMid, textDecoration: "none" }}>비밀번호 찾기</Link>
+        </div>
       </Card>
     </div>
   );

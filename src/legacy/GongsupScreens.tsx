@@ -11,6 +11,9 @@ import morningImg   from "@/imports/image-3.png";
 import afternoonImg from "@/imports/image-7.png";
 import eveningImg   from "@/imports/image-5.png";
 
+// ── 맵: 서당 (고정 배경, 시간대 없음) ─────────────────────────────
+import seodangImg from "@/imports/dang_a.png";
+
 // ── 캐릭터 스프라이트 시트 (charId → 이미지) ─────────────────────
 // 8방향 시트: 4열 × 2행
 // col/row: 0=정면, 1=뒤, 2=앞우, 3=우, 4=앞좌, 5=뒤좌, 6=뒤우, 7=우
@@ -120,6 +123,7 @@ const CUTOUT_HEIGHT = 70;
 
 // 좌석별 방향 번호 (좌석/벤치가 놓인 방향 — 캐릭터와 무관하게 고정)
 function getSeatDirection(seatId: number): number {
+  if (seatId >= 101) return 1;                                                          // 서당: 전원 선생님(정면 상단)을 바라봄 = 후면
   if ([1, 10].includes(seatId)) return 5;                                              // 정면
   if ([2, 3, 4, 5, 6, 7, 8, 9, 14, 15, 20, 21].includes(seatId)) return 1;              // 후면
   if ([11, 18, 23].includes(seatId)) return 7;                                          // 왼쪽 보기
@@ -132,6 +136,7 @@ function getSeatDirection(seatId: number): number {
 import ProfileAvatar from "@/components/ProfileAvatar";
 import { mockAuthApi } from "@/api/mockAuthApi";
 import { CHARACTERS } from "@/data/characters";
+import { getDisabledSeatIds } from "@/data/seatConfig";
 
 // 스프라이트 시트: 4열 × 2행 배치
 const SHEET_COLS = 4;
@@ -551,7 +556,7 @@ interface Seat { id: number; x: number; y: number; zone: string; status: SeatSta
 const MAP_W = 1022;
 const MAP_H = 620;
 
-const RAW_SEATS: Omit<Seat, "status">[] = [
+export const RAW_SEATS: Omit<Seat, "status">[] = [
   { id: 1,  x: 86,  y: 145, zone: "집중의 숲" },
   { id: 2,  x: 88,  y: 190, zone: "집중의 숲" },
   { id: 3,  x: 188, y: 158, zone: "집중의 숲" },
@@ -578,18 +583,58 @@ const RAW_SEATS: Omit<Seat, "status">[] = [
   { id: 24, x: 642, y: 217, zone: "세계수 광장" },
 ];
 
+// 서당 맵 좌석 (2줄 × 10칸, id 101~120 — 공숲 좌석 id와 겹치지 않게 구분)
+export const SEODANG_SEATS: Omit<Seat, "status">[] = [
+  { id: 101, x: 88,  y: 327, zone: "서당 앞줄" },
+  { id: 102, x: 181, y: 327, zone: "서당 앞줄" },
+  { id: 103, x: 275, y: 327, zone: "서당 앞줄" },
+  { id: 104, x: 368, y: 327, zone: "서당 앞줄" },
+  { id: 105, x: 461, y: 327, zone: "서당 앞줄" },
+  { id: 106, x: 564, y: 327, zone: "서당 앞줄" },
+  { id: 107, x: 658, y: 327, zone: "서당 앞줄" },
+  { id: 108, x: 751, y: 327, zone: "서당 앞줄" },
+  { id: 109, x: 844, y: 327, zone: "서당 앞줄" },
+  { id: 110, x: 937, y: 327, zone: "서당 앞줄" },
+  { id: 111, x: 88,  y: 410, zone: "서당 뒷줄" },
+  { id: 112, x: 181, y: 410, zone: "서당 뒷줄" },
+  { id: 113, x: 275, y: 410, zone: "서당 뒷줄" },
+  { id: 114, x: 368, y: 410, zone: "서당 뒷줄" },
+  { id: 115, x: 461, y: 410, zone: "서당 뒷줄" },
+  { id: 116, x: 564, y: 410, zone: "서당 뒷줄" },
+  { id: 117, x: 658, y: 410, zone: "서당 뒷줄" },
+  { id: 118, x: 751, y: 410, zone: "서당 뒷줄" },
+  { id: 119, x: 844, y: 410, zone: "서당 뒷줄" },
+  { id: 120, x: 937, y: 410, zone: "서당 뒷줄" },
+];
+
 // pre-occupied seats for visual context
 const OCCUPIED_IDS = new Set<number>([]);
-const DISABLED_IDS = new Set<number>([]);
 
-function makeSeats(): Seat[] {
-  return RAW_SEATS.map(s => ({
+function makeSeats(rawSeats: Omit<Seat, "status">[]): Seat[] {
+  const disabledIds = new Set(getDisabledSeatIds());
+  return rawSeats.map(s => ({
     ...s,
-    status: DISABLED_IDS.has(s.id) ? "disabled"
+    status: disabledIds.has(s.id) ? "disabled"
           : OCCUPIED_IDS.has(s.id) ? "occupied"
           : "available",
   }));
 }
+
+export type MapId = "forest" | "seodang";
+
+interface MapDef {
+  id: MapId;
+  label: string;
+  emoji: string;
+  seats: Omit<Seat, "status">[];
+  hasTimeOfDay: boolean;
+  staticBg?: string;
+}
+
+const MAPS: Record<MapId, MapDef> = {
+  forest:  { id: "forest",  label: "공숲",  emoji: "🌲", seats: RAW_SEATS,     hasTimeOfDay: true },
+  seodang: { id: "seodang", label: "서당",  emoji: "📜", seats: SEODANG_SEATS, hasTimeOfDay: false, staticBg: seodangImg },
+};
 
 const SEAT_STYLE: Record<SeatStatus, { bg: string; border: string; text: string; glow: string }> = {
   available: { bg: "rgba(226, 242, 255, 0.8)",   border: "#141050", text: "#000000",  glow: "rgba(60,120,40,0.35)" },
@@ -636,13 +681,27 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   char: number; setChar: (c: number) => void;
 }) {
   const nickname = mockAuthApi.getCurrentAccount()?.nickname ?? "학습자";
-  const [seats, setSeats] = useState<Seat[]>(makeSeats);
+  const [mapId, setMapId] = useState<MapId>("forest");
+  const [channel, setChannel] = useState(1);
+  const [seats, setSeats] = useState<Seat[]>(() => makeSeats(MAPS.forest.seats));
   const [showSeats, setShowSeats] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [seatedAt, setSeatedAt] = useState<number | null>(null);
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>(getTimeOfDay);
   const [showCharSelect, setShowCharSelect] = useState(false);
   const [todoOpen, setTodoOpen] = useState(true);
+
+  const currentMap = MAPS[mapId];
+
+  function handleSelectMap(id: MapId) {
+    if (id === mapId) return;
+    setMapId(id);
+    setSeats(makeSeats(MAPS[id].seats));
+    setSeatedAt(null);
+    setSelectedId(null);
+    setShowSeats(false);
+    setTimerOn(false);
+  }
 
   // ── 타이머 ──────────────────────────────────────────────────────
   const [timerSecs, setTimerSecs] = useState(0);
@@ -694,6 +753,8 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
     "세계수 광장":  "#8a2a4a",
     "계곡가 자유존":"#1a4a6a",
     "집현전 공터":  "#6a4010",
+    "서당 앞줄":    "#5a3a18",
+    "서당 뒷줄":    "#3a2a14",
   };
 
   return (
@@ -701,6 +762,32 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
 
       {/* LEFT SIDEBAR */}
       <div style={{ width: 268, flexShrink: 0, display: "flex", flexDirection: "column", gap: 10, padding: 10, overflowY: "auto", overflowX: "hidden", background: C.sidebarBg, borderRight: `3px solid ${C.sidebarBr}`, boxShadow: "inset -2px 0 6px rgba(0,0,0,0.35)" }}>
+
+        {/* 맵 · 채널 선택 */}
+        <Panel title="맵 · 채널" icon={<span style={{ fontSize: 13 }}>🗺️</span>} accent="linear-gradient(90deg,#162e12,#1e3e18)">
+          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+            {Object.values(MAPS).map(m => (
+              <button key={m.id} onClick={() => handleSelectMap(m.id)}
+                style={{ flex: 1, padding: "6px 4px", fontSize: 11, fontWeight: 700, fontFamily: ff, cursor: "pointer",
+                  background: mapId === m.id ? "linear-gradient(135deg,#3a6030,#1e4018)" : "rgba(139,94,60,0.12)",
+                  color: mapId === m.id ? "#c0f0a0" : "#9a7040",
+                  border: `2px solid ${mapId === m.id ? "#1a3010" : "#5a4020"}` }}>
+                {m.emoji} {m.label}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            {[1, 2, 3].map(ch => (
+              <button key={ch} onClick={() => setChannel(ch)}
+                style={{ flex: 1, padding: "5px 4px", fontSize: 11, fontWeight: 700, fontFamily: ff, cursor: "pointer",
+                  background: channel === ch ? "rgba(200,160,48,0.25)" : "rgba(139,94,60,0.08)",
+                  color: channel === ch ? "#f5c842" : "#7a5828",
+                  border: `1px solid ${channel === ch ? "#c8a030" : "#5a4020"}` }}>
+                {ch}채널
+              </button>
+            ))}
+          </div>
+        </Panel>
 
         {/* Seat entry panel */}
         <Panel title="좌석 선택" icon={<span style={{ fontSize: 13 }}>🪑</span>} accent="linear-gradient(90deg,#162e12,#1e3e18)">
@@ -905,45 +992,49 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
               </div>
             ))}
           </div>
-          <div style={{ marginTop: 8, fontSize: 10, color: "#7a8060", textAlign: "center", fontFamily: ff }}>총 24명 접속 중</div>
+          <div style={{ marginTop: 8, fontSize: 10, color: "#7a8060", textAlign: "center", fontFamily: ff }}>총 {seats.length}명 접속 중 · {channel}채널</div>
         </Panel>
       </div>
 
       {/* CENTER MAP — aspect-ratio locked to 1022×620 */}
-      <div style={{ flex: 1, minWidth: 0, background: timeMeta.bg, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", transition: "background 0.8s" }}>
+      <div style={{ flex: 1, minWidth: 0, background: currentMap.hasTimeOfDay ? timeMeta.bg : "#0e0a06", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", transition: "background 0.8s" }}>
         <div style={{ position: "relative", width: `min(100%, calc((100vh - 52px) * ${MAP_W / MAP_H}))`, aspectRatio: `${MAP_W} / ${MAP_H}`, overflow: "hidden" }}>
 
-          {/* Map image — 시간대 필터 적용 */}
+          {/* Map image — 시간대 필터 적용(공숲) 또는 고정 배경(서당) */}
           <img
-            src={timeMeta.src}
-            alt="공숲 학습 맵"
-            style={{ display: "block", width: "100%", height: "100%", imageRendering: "pixelated", filter: timeMeta.filter, transition: "filter 0.8s" }}
+            src={currentMap.hasTimeOfDay ? timeMeta.src : currentMap.staticBg}
+            alt={currentMap.label}
+            style={{ display: "block", width: "100%", height: "100%", imageRendering: "pixelated", filter: currentMap.hasTimeOfDay ? timeMeta.filter : "none", transition: "filter 0.8s" }}
           />
 
-          {/* 시간대 색상 오버레이 */}
-          <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: timeMeta.overlay, transition: "background 0.8s", mixBlendMode: "multiply" }} />
+          {/* 시간대 색상 오버레이 (공숲만) */}
+          {currentMap.hasTimeOfDay && (
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: timeMeta.overlay, transition: "background 0.8s", mixBlendMode: "multiply" }} />
+          )}
 
           {/* Vignette */}
           <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse at 50% 50%, transparent 60%, rgba(6,12,4,0.45) 100%)" }} />
 
-          {/* 시간대 전환 버튼 — 우하단 */}
-          <div style={{ position: "absolute", bottom: 12, left: 12, zIndex: 30, display: "flex", gap: 6 }}>
-            {TIME_CYCLE.map(t => {
-              const m = TIME_META[t];
-              const active = t === timeOfDay;
-              return (
-                <button key={t} onClick={() => setTimeOfDay(t)} title={m.label}
-                  style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: ff, transition: "all 0.15s",
-                    background: active ? "rgba(245,200,66,0.95)" : "rgba(16,8,2,0.78)",
-                    color: active ? "#2a1808" : "#c8a060",
-                    border: active ? "2px solid #c49820" : "2px solid #5a3010",
-                    boxShadow: active ? "0 0 0 2px rgba(245,200,66,0.35), 2px 2px 0 #8a6010" : "2px 2px 0 #2a1006",
-                  }}>
-                  <span style={{ fontSize: 14 }}>{m.emoji}</span>{m.label}
-                </button>
-              );
-            })}
-          </div>
+          {/* 시간대 전환 버튼 — 우하단 (공숲만) */}
+          {currentMap.hasTimeOfDay && (
+            <div style={{ position: "absolute", bottom: 12, left: 12, zIndex: 30, display: "flex", gap: 6 }}>
+              {TIME_CYCLE.map(t => {
+                const m = TIME_META[t];
+                const active = t === timeOfDay;
+                return (
+                  <button key={t} onClick={() => setTimeOfDay(t)} title={m.label}
+                    style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: ff, transition: "all 0.15s",
+                      background: active ? "rgba(245,200,66,0.95)" : "rgba(16,8,2,0.78)",
+                      color: active ? "#2a1808" : "#c8a060",
+                      border: active ? "2px solid #c49820" : "2px solid #5a3010",
+                      boxShadow: active ? "0 0 0 2px rgba(245,200,66,0.35), 2px 2px 0 #8a6010" : "2px 2px 0 #2a1006",
+                    }}>
+                    <span style={{ fontSize: 14 }}>{m.emoji}</span>{m.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Seat markers */}
           {showSeats && seats.map(seat => (
