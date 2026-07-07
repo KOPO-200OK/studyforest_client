@@ -13,6 +13,8 @@ const CURRENT_EMAIL_KEY = "gongsoop_current_email";
 export interface MockAccount {
   email: string;
   password: string;
+  name: string;
+  birthDate: string; // YYYY-MM-DD
   nickname?: string;
   characterId?: number;
 }
@@ -20,7 +22,7 @@ export interface MockAccount {
 function loadAccounts(): MockAccount[] {
   const raw = localStorage.getItem(ACCOUNTS_KEY);
   if (raw) return JSON.parse(raw) as MockAccount[];
-  const seed: MockAccount[] = [{ email: "admin", password: "1234", nickname: "관리자", characterId: DEFAULT_CHARACTER_ID }];
+  const seed: MockAccount[] = [{ email: "admin", password: "1234", name: "관리자", birthDate: "2000-01-01", nickname: "관리자", characterId: DEFAULT_CHARACTER_ID }];
   localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(seed));
   return seed;
 }
@@ -38,12 +40,12 @@ export const mockAuthApi = {
     localStorage.setItem(CURRENT_EMAIL_KEY, email);
   },
 
-  async signup(email: string, password: string): Promise<void> {
+  async signup(email: string, password: string, name: string, birthDate: string): Promise<void> {
     const accounts = loadAccounts();
     if (accounts.some((a) => a.email === email)) {
       throw new Error("이미 사용 중인 이메일입니다");
     }
-    accounts.push({ email, password });
+    accounts.push({ email, password, name, birthDate });
     saveAccounts(accounts);
   },
 
