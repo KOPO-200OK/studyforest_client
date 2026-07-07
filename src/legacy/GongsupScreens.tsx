@@ -586,25 +586,25 @@ export const RAW_SEATS: Omit<Seat, "status">[] = [
 // 서당 맵 좌석 (2줄 × 10칸, id 101~120 — 공숲 좌석 id와 겹치지 않게 구분)
 export const SEODANG_SEATS: Omit<Seat, "status">[] = [
   { id: 101, x: 88,  y: 327, zone: "서당 앞줄" },
-  { id: 102, x: 181, y: 327, zone: "서당 앞줄" },
-  { id: 103, x: 275, y: 327, zone: "서당 앞줄" },
-  { id: 104, x: 368, y: 327, zone: "서당 앞줄" },
-  { id: 105, x: 461, y: 327, zone: "서당 앞줄" },
-  { id: 106, x: 564, y: 327, zone: "서당 앞줄" },
-  { id: 107, x: 658, y: 327, zone: "서당 앞줄" },
-  { id: 108, x: 751, y: 327, zone: "서당 앞줄" },
-  { id: 109, x: 844, y: 327, zone: "서당 앞줄" },
-  { id: 110, x: 937, y: 327, zone: "서당 앞줄" },
+  { id: 102, x: 179, y: 327, zone: "서당 앞줄" },
+  { id: 103, x: 265, y: 327, zone: "서당 앞줄" },
+  { id: 104, x: 353, y: 327, zone: "서당 앞줄" },
+  { id: 105, x: 451, y: 327, zone: "서당 앞줄" },
+  { id: 106, x: 579, y: 327, zone: "서당 앞줄" },
+  { id: 107, x: 673, y: 327, zone: "서당 앞줄" },
+  { id: 108, x: 766, y: 327, zone: "서당 앞줄" },
+  { id: 109, x: 859, y: 327, zone: "서당 앞줄" },
+  { id: 110, x: 947, y: 327, zone: "서당 앞줄" },
   { id: 111, x: 88,  y: 410, zone: "서당 뒷줄" },
   { id: 112, x: 181, y: 410, zone: "서당 뒷줄" },
-  { id: 113, x: 275, y: 410, zone: "서당 뒷줄" },
-  { id: 114, x: 368, y: 410, zone: "서당 뒷줄" },
-  { id: 115, x: 461, y: 410, zone: "서당 뒷줄" },
-  { id: 116, x: 564, y: 410, zone: "서당 뒷줄" },
-  { id: 117, x: 658, y: 410, zone: "서당 뒷줄" },
-  { id: 118, x: 751, y: 410, zone: "서당 뒷줄" },
-  { id: 119, x: 844, y: 410, zone: "서당 뒷줄" },
-  { id: 120, x: 937, y: 410, zone: "서당 뒷줄" },
+  { id: 113, x: 265, y: 410, zone: "서당 뒷줄" },
+  { id: 114, x: 353, y: 410, zone: "서당 뒷줄" },
+  { id: 115, x: 448, y: 410, zone: "서당 뒷줄" },
+  { id: 116, x: 579, y: 410, zone: "서당 뒷줄" },
+  { id: 117, x: 673, y: 410, zone: "서당 뒷줄" },
+  { id: 118, x: 763, y: 410, zone: "서당 뒷줄" },
+  { id: 119, x: 854, y: 410, zone: "서당 뒷줄" },
+  { id: 120, x: 942, y: 410, zone: "서당 뒷줄" },
 ];
 
 // pre-occupied seats for visual context
@@ -689,6 +689,7 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   const [seatedAt, setSeatedAt] = useState<number | null>(null);
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>(getTimeOfDay);
   const [showCharSelect, setShowCharSelect] = useState(false);
+  const [showNotice, setShowNotice] = useState(false);
   const [todoOpen, setTodoOpen] = useState(true);
 
   const currentMap = MAPS[mapId];
@@ -1041,6 +1042,22 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
             <SeatMarker key={seat.id} seat={seat} isSelected={selectedId === seat.id} onClick={handleSeatClick} />
           ))}
 
+          {/* 게시판 — 12번 좌석 위 안내판, 클릭하면 공지사항 표시 (공숲 맵에만 존재) */}
+          {mapId === "forest" && (
+            <div
+              onClick={() => setShowNotice(true)}
+              title="클릭하여 공지사항 보기"
+              style={{ position: "absolute", left: `${(680 / MAP_W) * 100}%`, top: `${(388 / MAP_H) * 100}%`, transform: "translate(-50%, -50%)", zIndex: 22, width: 46, height: 34, cursor: "pointer" }}
+            >
+              <div style={{ position: "absolute", top: -22, left: "50%", transform: "translateX(-50%)", background: "#c04040", color: "#fff", fontSize: 9, fontWeight: 700, padding: "2px 7px", whiteSpace: "nowrap", border: "1px solid #7a1010", boxShadow: "1px 1px 0 #4a0808", animation: "noticeBlink 1.4s ease-in-out infinite" }}>
+                👆 클릭
+              </div>
+            </div>
+          )}
+
+          {/* 공지사항 모달 */}
+          {showNotice && <NoticeBoardModal onClose={() => setShowNotice(false)} />}
+
           {/* Seated character */}
           {seatedSeat && (
             <>
@@ -1256,7 +1273,7 @@ function CharSelectModal({ current, onSelect, onClose }: {
       <div onClick={onClose} style={{ position: "absolute", inset: 0, zIndex: 40, background: "rgba(0,0,0,0.62)" }} />
       <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 50,
         background: "linear-gradient(160deg,#fdf4db,#eedda0)", border: "3px solid #9a6a30",
-        boxShadow: "4px 5px 0 #5a3a08, 0 16px 48px rgba(0,0,0,0.75)", padding: "20px 22px", width: 440 }}>
+        boxShadow: "4px 5px 0 #5a3a08, 0 16px 48px rgba(0,0,0,0.75)", padding: "24px 26px", width: 620 }}>
 
         {[0,1].map(i=>[
           <div key={`tl${i}`} style={{ position:"absolute", top:5, left:5, width:6, height:6, background:"#3a1e06", borderRadius:1 }}/>,
@@ -1267,19 +1284,19 @@ function CharSelectModal({ current, onSelect, onClose }: {
           🎭 캐릭터 변경
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 18 }}>
           {CHARACTERS.map(ch => {
             const active = ch.id === selected;
             return (
               <button key={ch.id} onClick={() => setSelected(ch.id)}
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6,
-                  padding: "10px 6px", cursor: "pointer",
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8,
+                  padding: "14px 8px", cursor: "pointer",
                   background: active ? "linear-gradient(135deg,#f5c842,#e8a820)" : "rgba(139,94,60,0.08)",
                   border: active ? "2px solid #b88010" : "2px solid #c4a060",
                   boxShadow: active ? "2px 3px 0 #8a6010" : "1px 2px 0 #9a7030",
                 }}>
-                <ProfileAvatar id={ch.id} size={60} />
-                <span style={{ fontSize: 9, color: active ? "#5a3010" : "#7a5828",
+                <ProfileAvatar id={ch.id} size={92} />
+                <span style={{ fontSize: 11, color: active ? "#5a3010" : "#7a5828",
                   fontWeight: active ? 700 : 500, fontFamily: ff, textAlign: "center", lineHeight: 1.2 }}>
                   {ch.label}
                 </span>
@@ -1310,6 +1327,46 @@ function CharSelectModal({ current, onSelect, onClose }: {
             저장하기
           </button>
         </div>
+      </div>
+    </>
+  );
+}
+
+/* ── 공지사항 게시판 모달 ─────────────────────────────────────── */
+const NOTICES: { title: string; date: string; body: string }[] = [
+  { title: "서당 맵 오픈!", date: "2026-07-07", body: "새로운 학습 공간 '서당' 맵이 열렸어요. 좌측 사이드바의 맵 선택에서 골라보세요." },
+  { title: "배경음악 기능 추가", date: "2026-07-07", body: "상단 네비게이션 바에서 배경음악을 켜고 끌 수 있어요. 집중이 필요할 땐 켜보세요." },
+  { title: "장원급제 이벤트 안내", date: "2026-07-01", body: "이번 달 문제풀이 랭킹 상위 10명에게 특별 캐릭터 의상이 지급됩니다." },
+];
+
+function NoticeBoardModal({ onClose }: { onClose: () => void }) {
+  return (
+    <>
+      <div onClick={onClose} style={{ position: "absolute", inset: 0, zIndex: 40, background: "rgba(0,0,0,0.62)" }} />
+      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 50,
+        background: "linear-gradient(160deg,#fdf4db,#eedda0)", border: "3px solid #9a6a30",
+        boxShadow: "4px 5px 0 #5a3a08, 0 16px 48px rgba(0,0,0,0.75)", padding: "22px 24px", width: 400, maxHeight: "72vh", overflowY: "auto" }}>
+
+        <div style={{ fontFamily: fs, fontWeight: 700, fontSize: 15, color: "#2a1808", marginBottom: 16, textAlign: "center" }}>
+          📌 공지사항
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {NOTICES.map((n, i) => (
+            <div key={i} style={{ padding: "10px 12px", background: "rgba(139,94,60,0.08)", border: "1px solid #c4a060" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                <span style={{ fontFamily: ff, fontWeight: 700, fontSize: 13, color: "#2a1808" }}>{n.title}</span>
+                <span style={{ fontFamily: ff, fontSize: 10, color: "#9a7040" }}>{n.date}</span>
+              </div>
+              <div style={{ fontFamily: ff, fontSize: 12, color: "#5a3010", lineHeight: 1.5 }}>{n.body}</div>
+            </div>
+          ))}
+        </div>
+
+        <button onClick={onClose} style={{ marginTop: 16, width: "100%", padding: "8px", fontSize: 11, fontWeight: 700,
+          background: "rgba(139,94,60,0.1)", border: "1px solid #c4a060", color: "#5a3010", cursor: "pointer", fontFamily: ff }}>
+          닫기
+        </button>
       </div>
     </>
   );

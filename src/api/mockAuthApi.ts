@@ -17,14 +17,24 @@ export interface MockAccount {
   birthDate: string; // YYYY-MM-DD
   nickname?: string;
   characterId?: number;
+  /** 관리자 페이지 접근 권한 — 회원가입으로는 부여되지 않음 */
+  isAdmin?: boolean;
 }
 
 function loadAccounts(): MockAccount[] {
   const raw = localStorage.getItem(ACCOUNTS_KEY);
-  if (raw) return JSON.parse(raw) as MockAccount[];
-  const seed: MockAccount[] = [{ email: "admin", password: "1234", name: "관리자", birthDate: "2000-01-01", nickname: "관리자", characterId: DEFAULT_CHARACTER_ID }];
-  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(seed));
-  return seed;
+  const accounts: MockAccount[] = raw ? (JSON.parse(raw) as MockAccount[]) : [];
+
+  // admin 계정은 항상 존재하고 관리자 권한을 갖도록 보정 (삭제됐거나, isAdmin 필드 도입 전에 만들어졌거나 둘 다 처리)
+  const admin = accounts.find((a) => a.email === "admin");
+  if (!admin) {
+    accounts.push({ email: "admin", password: "1234", name: "관리자", birthDate: "2000-01-01", nickname: "관리자", characterId: DEFAULT_CHARACTER_ID, isAdmin: true });
+    saveAccounts(accounts);
+  } else if (!admin.isAdmin) {
+    admin.isAdmin = true;
+    saveAccounts(accounts);
+  }
+  return accounts;
 }
 
 function saveAccounts(accounts: MockAccount[]) {
@@ -79,10 +89,31 @@ export const mockAuthApi = {
     return localStorage.getItem(CURRENT_EMAIL_KEY);
   },
 
+  /** 로그아웃 — 토큰과 현재 계정 정보만 지움 (계정 자체는 유지) */
+  logout(): void {
+    tokenStore.clear();
+    localStorage.removeItem(CURRENT_EMAIL_KEY);
+  },
+
+  /** 회원 탈퇴 — 현재 로그인된 계정을 삭제하고 로그아웃 처리 */
+  withdraw(): void {
+    const email = mockAuthApi.getCurrentEmail();
+    if (email) {
+      const accounts = loadAccounts().filter((a) => a.email !== email);
+      saveAccounts(accounts);
+    }
+    mockAuthApi.logout();
+  },
+
   getCurrentAccount(): MockAccount | null {
     const email = mockAuthApi.getCurrentEmail();
     if (!email) return null;
     return loadAccounts().find((a) => a.email === email) ?? null;
+  },
+
+  /** 현재 로그인한 계정이 관리자 페이지에 접근할 수 있는지 */
+  isCurrentUserAdmin(): boolean {
+    return mockAuthApi.getCurrentAccount()?.isAdmin === true;
   },
 
   /** 관리자 회원 관리 화면용 — 비밀번호는 빼고 반환 */
