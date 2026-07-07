@@ -135,8 +135,10 @@ function getSeatDirection(seatId: number): number {
 
 import ProfileAvatar from "@/components/ProfileAvatar";
 import { mockAuthApi } from "@/api/mockAuthApi";
+import { mockNoticeApi } from "@/api/mockNoticeApi";
 import { CHARACTERS } from "@/data/characters";
 import { getDisabledSeatIds } from "@/data/seatConfig";
+import { useSidebar } from "@/context/SidebarContext";
 
 // 스프라이트 시트: 4열 × 2행 배치
 const SHEET_COLS = 4;
@@ -681,6 +683,7 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   char: number; setChar: (c: number) => void;
 }) {
   const nickname = mockAuthApi.getCurrentAccount()?.nickname ?? "학습자";
+  const { collapsed: sidebarCollapsed } = useSidebar();
   const [mapId, setMapId] = useState<MapId>("forest");
   const [channel, setChannel] = useState(1);
   const [seats, setSeats] = useState<Seat[]>(() => makeSeats(MAPS.forest.seats));
@@ -761,8 +764,15 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   return (
     <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
 
-      {/* LEFT SIDEBAR */}
-      <div style={{ width: 268, flexShrink: 0, display: "flex", flexDirection: "column", gap: 10, padding: 10, overflowY: "auto", overflowX: "hidden", background: C.sidebarBg, borderRight: `3px solid ${C.sidebarBr}`, boxShadow: "inset -2px 0 6px rgba(0,0,0,0.35)" }}>
+      {/* LEFT SIDEBAR — 상단 "공숲" 로고 클릭으로 열고 닫기 */}
+      {/* 바깥 래퍼가 폭만 접고, 안쪽은 항상 268px 고정이라 내용(이미지 등)이 찌그러지지 않음 */}
+      <div style={{ width: sidebarCollapsed ? 0 : 268, flexShrink: 0, overflow: "hidden", transition: "width 0.22s ease" }}>
+      <div style={{
+        width: 268, height: "100%", flexShrink: 0, display: "flex", flexDirection: "column", gap: 10,
+        padding: 10, overflowY: "auto", overflowX: "hidden",
+        background: C.sidebarBg, borderRight: `3px solid ${C.sidebarBr}`,
+        boxShadow: "inset -2px 0 6px rgba(0,0,0,0.35)",
+      }}>
 
         {/* 맵 · 채널 선택 */}
         <Panel title="맵 · 채널" icon={<span style={{ fontSize: 13 }}>🗺️</span>} accent="linear-gradient(90deg,#162e12,#1e3e18)">
@@ -996,6 +1006,7 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
           <div style={{ marginTop: 8, fontSize: 10, color: "#7a8060", textAlign: "center", fontFamily: ff }}>총 {seats.length}명 접속 중 · {channel}채널</div>
         </Panel>
       </div>
+      </div>
 
       {/* CENTER MAP — aspect-ratio locked to 1022×620 */}
       <div style={{ flex: 1, minWidth: 0, background: currentMap.hasTimeOfDay ? timeMeta.bg : "#0e0a06", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", transition: "background 0.8s" }}>
@@ -1048,6 +1059,19 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
               onClick={() => setShowNotice(true)}
               title="클릭하여 공지사항 보기"
               style={{ position: "absolute", left: `${(680 / MAP_W) * 100}%`, top: `${(388 / MAP_H) * 100}%`, transform: "translate(-50%, -50%)", zIndex: 22, width: 46, height: 34, cursor: "pointer" }}
+            >
+              <div style={{ position: "absolute", top: -22, left: "50%", transform: "translateX(-50%)", background: "#c04040", color: "#fff", fontSize: 9, fontWeight: 700, padding: "2px 7px", whiteSpace: "nowrap", border: "1px solid #7a1010", boxShadow: "1px 1px 0 #4a0808", animation: "noticeBlink 1.4s ease-in-out infinite" }}>
+                👆 클릭
+              </div>
+            </div>
+          )}
+
+          {/* 게시판 — 서당 훈장님 머리 위, 클릭하면 공지사항 표시 (서당 맵에만 존재) */}
+          {mapId === "seodang" && (
+            <div
+              onClick={() => setShowNotice(true)}
+              title="클릭하여 공지사항 보기"
+              style={{ position: "absolute", left: `${(512 / MAP_W) * 100}%`, top: `${(150 / MAP_H) * 100}%`, transform: "translate(-50%, -50%)", zIndex: 22, width: 46, height: 34, cursor: "pointer" }}
             >
               <div style={{ position: "absolute", top: -22, left: "50%", transform: "translateX(-50%)", background: "#c04040", color: "#fff", fontSize: 9, fontWeight: 700, padding: "2px 7px", whiteSpace: "nowrap", border: "1px solid #7a1010", boxShadow: "1px 1px 0 #4a0808", animation: "noticeBlink 1.4s ease-in-out infinite" }}>
                 👆 클릭
@@ -1333,13 +1357,8 @@ function CharSelectModal({ current, onSelect, onClose }: {
 }
 
 /* ── 공지사항 게시판 모달 ─────────────────────────────────────── */
-const NOTICES: { title: string; date: string; body: string }[] = [
-  { title: "서당 맵 오픈!", date: "2026-07-07", body: "새로운 학습 공간 '서당' 맵이 열렸어요. 좌측 사이드바의 맵 선택에서 골라보세요." },
-  { title: "배경음악 기능 추가", date: "2026-07-07", body: "상단 네비게이션 바에서 배경음악을 켜고 끌 수 있어요. 집중이 필요할 땐 켜보세요." },
-  { title: "장원급제 이벤트 안내", date: "2026-07-01", body: "이번 달 문제풀이 랭킹 상위 10명에게 특별 캐릭터 의상이 지급됩니다." },
-];
-
 function NoticeBoardModal({ onClose }: { onClose: () => void }) {
+  const notices = mockNoticeApi.listNotices();
   return (
     <>
       <div onClick={onClose} style={{ position: "absolute", inset: 0, zIndex: 40, background: "rgba(0,0,0,0.62)" }} />
@@ -1352,8 +1371,11 @@ function NoticeBoardModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {NOTICES.map((n, i) => (
-            <div key={i} style={{ padding: "10px 12px", background: "rgba(139,94,60,0.08)", border: "1px solid #c4a060" }}>
+          {notices.length === 0 && (
+            <div style={{ textAlign: "center", fontSize: 12, color: "#9a7040", fontFamily: ff, padding: "16px 0" }}>등록된 공지사항이 없습니다</div>
+          )}
+          {notices.map((n) => (
+            <div key={n.id} style={{ padding: "10px 12px", background: "rgba(139,94,60,0.08)", border: "1px solid #c4a060" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
                 <span style={{ fontFamily: ff, fontWeight: 700, fontSize: 13, color: "#2a1808" }}>{n.title}</span>
                 <span style={{ fontFamily: ff, fontSize: 10, color: "#9a7040" }}>{n.date}</span>

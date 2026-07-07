@@ -6,6 +6,7 @@ import { mockAuthApi } from "@/api/mockAuthApi";
 import ProfileAvatar from "@/components/ProfileAvatar";
 import { DEFAULT_CHARACTER_ID } from "@/data/characters";
 import { useBgm } from "@/audio/BgmProvider";
+import { useSidebar } from "@/context/SidebarContext";
 
 const NAV_ITEMS = [
   { to: "/study-room",   label: "스터디룸" },
@@ -21,6 +22,7 @@ export default function Nav() {
   const nickname = account?.nickname ?? "학습자";
   const characterId = account?.characterId ?? DEFAULT_CHARACTER_ID;
   const bgm = useBgm();
+  const sidebar = useSidebar();
   const [showMenu, setShowMenu] = useState(false);
   const navItems = NAV_ITEMS.filter((item) => item.to !== "/admin" || account?.isAdmin);
 
@@ -39,11 +41,15 @@ export default function Nav() {
 
   return (
     <nav style={{ height: 52, flexShrink: 0, display: "flex", alignItems: "center", padding: "0 16px", gap: 4, zIndex: 50, background: C.navBg, borderBottom: `3px solid ${C.navBr}`, boxShadow: `0 3px 0 ${C.sidebarBr}, 0 4px 20px rgba(0,0,0,0.65)` }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 20 }}>
+      <button
+        onClick={sidebar.toggle}
+        title="사이드바 열기/닫기"
+        style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 20, background: "none", border: "none", padding: 0, cursor: "pointer" }}
+      >
         <span style={{ fontSize: 22, lineHeight: 1 }}>🌲</span>
         <span style={{ fontFamily: fs, fontWeight: 700, fontSize: 18, color: "#f5e6c8" }}>공숲</span>
         <span style={{ fontSize: 10, padding: "2px 6px", background: "#7a4f2e", color: C.gold, border: `1px solid ${C.inputBr}`, fontWeight: 700 }}>한국사</span>
-      </div>
+      </button>
       {navItems.map(item => (
         <NavLink key={item.to} to={item.to} style={({ isActive }) => ({
           padding: "5px 12px", fontSize: 13, textDecoration: "none", fontFamily: ff,

@@ -15,6 +15,7 @@ import NotFoundPage from "@/pages/NotFoundPage";
 import AdminLayout from "@/layouts/AdminLayout";
 import AdminMembersPage from "@/pages/admin/AdminMembersPage";
 import AdminQuestionsPage from "@/pages/admin/AdminQuestionsPage";
+import AdminNoticesPage from "@/pages/admin/AdminNoticesPage";
 import AdminAiPage from "@/pages/admin/AdminAiPage";
 import AdminJangwonPage from "@/pages/admin/AdminJangwonPage";
 import AdminStudyRoomsPage from "@/pages/admin/AdminStudyRoomsPage";
@@ -49,6 +50,7 @@ export const router = createBrowserRouter([
         { index: true, element: <Navigate to="members" replace /> },
         { path: "members", element: <AdminMembersPage /> },
         { path: "questions", element: <AdminQuestionsPage /> },
+        { path: "notices", element: <AdminNoticesPage /> },
         { path: "ai", element: <AdminAiPage /> },
         { path: "jangwon", element: <AdminJangwonPage /> },
         { path: "study-rooms", element: <AdminStudyRoomsPage /> },
