@@ -30,6 +30,7 @@ import MockExamSolvePage from "@/pages/question/MockExamSolvePage";
 import MockExamResultPage from "@/pages/question/MockExamResultPage";
 import WrongAnswerPage from "@/pages/question/WrongAnswerPage";
 import AiQuestionPage from "@/pages/question/AiQuestionPage";
+import AiQuestionGeneratePage from "@/pages/question/AiQuestionGeneratePage";
 
 export const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/login" replace /> },
@@ -70,6 +71,7 @@ export const router = createBrowserRouter([
         { path: "wrong-answers/:wrongAnswerId", element: <WrongAnswerPage /> },
         { path: "ai", element: <AiQuestionPage /> },
         { path: "ai/:chatSessionId", element: <AiQuestionPage /> },
+        { path: "ai-generate", element: <AiQuestionGeneratePage /> },
       ]},
 
       { path: "*", element: <NotFoundPage /> },

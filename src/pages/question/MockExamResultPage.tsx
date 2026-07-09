@@ -1,20 +1,44 @@
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Card, Button } from "@/components/ui";
-import { fs, ff } from "@/styles/tokens";
+import { fs, ff, C } from "@/styles/tokens";
+import type { MockExamResponse } from "@/api/types";
 
-/** 📝 모의고사 결과 — ERD 화면설계서 기준 스텁. TODO: 실제 구현 */
 export default function MockExamResultPage() {
   const nav = useNavigate();
+  const location = useLocation();
+  const { mockExamId } = useParams();
+  const state = location.state as { result?: MockExamResponse; totalCount?: number } | null;
+
+  if (!state?.result) {
+    return (
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 28, background: "linear-gradient(160deg,#1a2a14,#0e1a0a)" }}>
+        <button onClick={() => nav("/question-bank/mock-exams")} style={{ background: "none", border: "none", color: "#c8a060", cursor: "pointer", fontFamily: ff, fontSize: 12, marginBottom: 16 }}>← 모의고사 시작하기</button>
+        <Card style={{ maxWidth: 420 }}>
+          <div style={{ fontFamily: ff, fontSize: 13, color: C.inkDark }}>
+            결과 정보를 찾을 수 없어요. 새로고침했거나 직접 주소로 들어온 경우일 수 있어요.
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  const { result, totalCount } = state;
+
   return (
     <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 28, background: "linear-gradient(160deg,#1a2a14,#0e1a0a)" }}>
       <button onClick={() => nav("/question-bank")} style={{ background: "none", border: "none", color: "#c8a060", cursor: "pointer", fontFamily: ff, fontSize: 12, marginBottom: 16 }}>← 문제은행 홈</button>
-      <h2 style={{ fontFamily: fs, color: "#f5e6c8", fontSize: 18, marginBottom: 16 }}>📝 모의고사 결과</h2>
-      <Card>
-        <div style={{ fontFamily: ff, fontSize: 13, color: "#5a3010", lineHeight: 1.8 }}>
-          점수와 시대별 정답률을 보여줍니다.
-          <div style={{ marginTop: 12, color: "#9a7040", fontSize: 11 }}>🚧 구현 예정 (ERD 화면설계서 참고)</div>
+      <h2 style={{ fontFamily: fs, color: "#f5e6c8", fontSize: 18, marginBottom: 16 }}>📝 {mockExamId}회차 결과</h2>
+
+      <Card style={{ maxWidth: 420 }}>
+        <div style={{ fontFamily: fs, fontWeight: 700, fontSize: 22, color: C.inkDark, textAlign: "center", marginBottom: 8 }}>
+          {result.correctCount ?? "-"} / {totalCount ?? "-"} 정답
         </div>
-        <div style={{ marginTop: 16 }}><Button variant="green" onClick={() => nav("/question-bank/solve")}>문제 풀이 화면으로</Button></div>
+        {result.score !== undefined && (
+          <div style={{ fontFamily: ff, fontSize: 14, color: C.inkMid, textAlign: "center", marginBottom: 16 }}>
+            점수 {result.score}점
+          </div>
+        )}
+        <Button variant="green" block onClick={() => nav("/question-bank/mock-exams")}>다시 응시하기</Button>
       </Card>
     </div>
   );

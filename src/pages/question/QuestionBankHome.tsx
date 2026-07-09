@@ -8,6 +8,7 @@ const MENU = [
   { to: "mock-exams",   icon: "📝", label: "모의고사",     sub: "실전형 시험 (기본/심화)" },
   { to: "wrong-answers",icon: "📕", label: "오답노트",     sub: "틀린 문제 다시 풀기" },
   { to: "ai",           icon: "🤖", label: "AI 질의응답",  sub: "해설·개념 질문" },
+  { to: "ai-generate",  icon: "🪄", label: "AI로 문제지 만들기", sub: "AI가 즉석에서 문제 생성" },
 ];
 
 export default function QuestionBankHome() {

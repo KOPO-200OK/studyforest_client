@@ -4,7 +4,7 @@ import { Button } from "@/components/ui";
 import ProfileAvatar from "@/components/ProfileAvatar";
 import { mockAuthApi } from "@/api/mockAuthApi";
 import { mockJangwonApi, type JangwonApplication } from "@/api/mockJangwonApi";
-import { getJangwonWinners } from "@/data/jangwonWinners";
+import { getJangwonWinnersByYear } from "@/data/jangwonWinners";
 import { DEFAULT_CHARACTER_ID } from "@/data/characters";
 
 function ScrollRoller() {
@@ -41,7 +41,7 @@ export default function JangwonPage() {
   }, [email]);
     const [error, setError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const winners = getJangwonWinners();
+    const winnersByYear = getJangwonWinnersByYear();
 
   function handleFile(file: File | undefined) {
     if (!file) return;
@@ -97,16 +97,22 @@ export default function JangwonPage() {
               壯元及第
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              {winners.map((w, i) => (
-                <div key={w.year} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, paddingBottom: i < winners.length - 1 ? 20 : 0, borderBottom: i < winners.length - 1 ? "1px solid rgba(184,168,128,0.6)" : "none" }}>
-                  <div style={{ fontFamily: ff, fontSize: 11, fontWeight: 700, color: C.inkMid, letterSpacing: "0.06em" }}>{w.year}년 장원급제</div>
-                  <div style={{ position: "relative", width: 68, height: 68 }}>
-                    <div style={{ position: "absolute", top: -22, left: "50%", transform: "translateX(-50%)", fontSize: 30, filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.4))" }}>👑</div>
-                    <div style={{ width: 68, height: 68, borderRadius: "50%", overflow: "hidden", border: "3px solid #c8a030", boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
-                      <ProfileAvatar id={w.characterId} size={68} />
-                    </div>
+              {winnersByYear.map((group, i) => (
+                <div key={group.year} style={{ paddingBottom: i < winnersByYear.length - 1 ? 20 : 0, borderBottom: i < winnersByYear.length - 1 ? "1px solid rgba(184,168,128,0.6)" : "none" }}>
+                  <div style={{ textAlign: "center", fontFamily: ff, fontSize: 11, fontWeight: 700, color: C.inkMid, letterSpacing: "0.06em", marginBottom: 14 }}>{group.year}년 장원급제</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "18px 14px" }}>
+                    {group.winners.map((w) => (
+                      <div key={w.nickname} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, width: 68 }}>
+                        <div style={{ position: "relative", width: 56, height: 56 }}>
+                          <div style={{ position: "absolute", top: -18, left: "50%", transform: "translateX(-50%)", fontSize: 22, filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.4))" }}>👑</div>
+                          <div style={{ width: 56, height: 56, borderRadius: "50%", overflow: "hidden", border: "3px solid #c8a030", boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
+                            <ProfileAvatar id={w.characterId} size={56} />
+                          </div>
+                        </div>
+                        <div style={{ fontFamily: fs, fontWeight: 700, fontSize: 13, color: C.inkDark, textAlign: "center" }}>{w.nickname}</div>
+                      </div>
+                    ))}
                   </div>
-                  <div style={{ fontFamily: fs, fontWeight: 700, fontSize: 15, color: C.inkDark }}>{w.nickname}</div>
                 </div>
               ))}
             </div>
