@@ -1,16 +1,47 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, Button } from "@/components/ui";
 import { fs, ff, C } from "@/styles/tokens";
-import { mockAuthApi } from "@/api/mockAuthApi";
+import { adminApi, type AdminMemberSummaryResponse } from "@/api/adminApi";
 import { CHARACTERS } from "@/data/characters";
 
-export default function AdminMembersPage() {
-  const [accounts, setAccounts] = useState(() => mockAuthApi.listAccounts());
+type AccountRow = {
+  memberId: number;
+  email: string;
+  name: string;
+  birthDate: string;
+  nickname?: string;
+  characterId?: number;
+  isDeleted: boolean;
+};
 
-  function handleDelete(email: string) {
-    if (!confirm(`${email} 계정을 삭제할까요?`)) return;
-    mockAuthApi.deleteAccount(email);
-    setAccounts(mockAuthApi.listAccounts());
+function toAccountRow(member: AdminMemberSummaryResponse): AccountRow {
+  return {
+    memberId: member.memberId,
+    email: member.email,
+    name: member.name,
+    birthDate: member.birthdate,
+    nickname: member.userRole,
+    characterId: undefined,
+    isDeleted: member.isDeleted,
+  };
+}
+
+export default function AdminMembersPage() {
+  const [accounts, setAccounts] = useState<AccountRow[]>([]);
+
+  async function loadAccounts() {
+    const page = await adminApi.listMembers({ page: 0, size: 50 });
+    setAccounts(page.content.map(toAccountRow));
+  }
+
+  useEffect(() => {
+    void loadAccounts();
+  }, []);
+
+  async function handleDelete(memberId: number, email: string, isDeleted: boolean) {
+    if (!confirm(`${email} 계정을 ${isDeleted ? "복구" : "탈퇴 처리"}할까요?`)) return;
+    await adminApi.updateMemberDeleteStatus(memberId, !isDeleted);
+    await loadAccounts();
   }
 
   return (
@@ -37,10 +68,10 @@ export default function AdminMembersPage() {
                   <td style={{ padding: "10px 14px", color: "#2a1808", borderBottom: `1px solid ${C.hanjiB}` }}>{a.name}</td>
                   <td style={{ padding: "10px 14px", color: "#2a1808", borderBottom: `1px solid ${C.hanjiB}` }}>{a.birthDate}</td>
                   <td style={{ padding: "10px 14px", color: "#2a1808", borderBottom: `1px solid ${C.hanjiB}` }}>{a.nickname ?? "-"}</td>
-                  <td style={{ padding: "10px 14px", color: "#2a1808", borderBottom: `1px solid ${C.hanjiB}` }}>{character?.label ?? "-"}</td>
+                  <td style={{ padding: "10px 14px", color: "#2a1808", borderBottom: `1px solid ${C.hanjiB}` }}>{character?.label ?? (a.isDeleted ? "탈퇴" : "-")}</td>
                   <td style={{ padding: "10px 14px", borderBottom: `1px solid ${C.hanjiB}`, textAlign: "right" }}>
-                    <Button variant="red" onClick={() => handleDelete(a.email)} style={{ padding: "4px 10px", fontSize: 10 }}>
-                      삭제
+                    <Button variant={a.isDeleted ? "green" : "red"} onClick={() => void handleDelete(a.memberId, a.email, a.isDeleted)} style={{ padding: "4px 10px", fontSize: 10 }}>
+                      {a.isDeleted ? "복구" : "삭제"}
                     </Button>
                   </td>
                 </tr>

@@ -1,12 +1,5 @@
-// ============================================================
-// 관리자 "문제 관리" 목업 저장소 — 백엔드(문제 등록 API) 준비 전까지 임시 사용.
-// localStorage에 문제를 저장한다. 실제 문제은행 풀이 화면과는 아직 연결돼 있지 않다.
-// 백엔드가 준비되면 이 파일을 지우고 questionApi.ts에 실제 등록 API를 추가해 교체.
-// ============================================================
-
+import { adminApi } from "./adminApi";
 import type { Difficulty, ExamLevel, PeriodCode } from "./types";
-
-const QUESTIONS_KEY = "gongsoop_mock_questions";
 
 export interface MockQuestionOption {
   optionNo: number;
@@ -27,30 +20,81 @@ export interface MockQuestion {
 
 export type CreateQuestionInput = Omit<MockQuestion, "questionId">;
 
-function loadQuestions(): MockQuestion[] {
-  const raw = localStorage.getItem(QUESTIONS_KEY);
-  return raw ? (JSON.parse(raw) as MockQuestion[]) : [];
+const PERIOD_LABEL: Record<PeriodCode, string> = {
+  PREHISTORY: "선사·고조선",
+  THREE_KINGDOMS: "삼국·남북국",
+  GORYEO: "고려",
+  JOSEON: "조선",
+  MODERN: "근현대",
+};
+
+function periodFromEra(era?: string | null): PeriodCode {
+  const found = (Object.entries(PERIOD_LABEL) as [PeriodCode, string][]).find(([key, label]) => era === key || era === label);
+  return found?.[0] ?? "PREHISTORY";
 }
 
-function saveQuestions(questions: MockQuestion[]) {
-  localStorage.setItem(QUESTIONS_KEY, JSON.stringify(questions));
+let cache: MockQuestion[] = [];
+
+function mapQuestion(q: {
+  questionId: number;
+  era?: string | null;
+  category?: string | null;
+  questionPreview?: string;
+  questionText?: string;
+}): MockQuestion {
+  return {
+    questionId: q.questionId,
+    periodCode: periodFromEra(q.era),
+    topicName: q.category ?? "-",
+    questionContent: q.questionText ?? q.questionPreview ?? "",
+    difficulty: "NORMAL",
+    examLevel: "BASIC",
+    options: [],
+  };
 }
 
 export const mockQuestionApi = {
   listQuestions(): MockQuestion[] {
-    return loadQuestions();
+    return cache;
   },
 
-  addQuestion(input: CreateQuestionInput): MockQuestion {
-    const questions = loadQuestions();
-    const nextId = questions.reduce((max, q) => Math.max(max, q.questionId), 0) + 1;
-    const question: MockQuestion = { ...input, questionId: nextId };
-    questions.push(question);
-    saveQuestions(questions);
+  async loadQuestions(): Promise<MockQuestion[]> {
+    const page = await adminApi.listQuestions({ page: 0, size: 50, isDeleted: false });
+    cache = page.content.map(mapQuestion);
+    return cache;
+  },
+
+  async addQuestion(input: CreateQuestionInput): Promise<MockQuestion> {
+    const correct = input.options.find((o) => o.isCorrect)?.optionNo ?? 1;
+    const nextQNo = cache.length + 1;
+
+    const created = await adminApi.createQuestion({
+      examRound: 1,
+      qNo: nextQNo,
+      questionText: input.questionContent,
+      passage: null,
+      point: 2,
+      choice1: input.options[0]?.optionContent ?? "-",
+      choice2: input.options[1]?.optionContent ?? "-",
+      choice3: input.options[2]?.optionContent ?? "-",
+      choice4: input.options[3]?.optionContent ?? "-",
+      choice5: "위 내용 중 정답 없음",
+      answer: correct,
+      era: PERIOD_LABEL[input.periodCode],
+      category: input.topicName,
+    });
+
+    const question: MockQuestion = {
+      ...input,
+      questionId: created.questionId,
+    };
+
+    cache = [question, ...cache];
     return question;
   },
 
-  deleteQuestion(questionId: number): void {
-    saveQuestions(loadQuestions().filter((q) => q.questionId !== questionId));
+  async deleteQuestion(questionId: number): Promise<void> {
+    await adminApi.deleteQuestion(questionId);
+    cache = cache.filter((q) => q.questionId !== questionId);
   },
 };
