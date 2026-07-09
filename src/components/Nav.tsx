@@ -7,6 +7,8 @@ import ProfileAvatar from "@/components/ProfileAvatar";
 import { DEFAULT_CHARACTER_ID } from "@/data/characters";
 import { useBgm } from "@/audio/BgmProvider";
 import { useSidebar } from "@/context/SidebarContext";
+import { isJangwonWinner } from "@/data/jangwonWinners";
+import logoImg from "@/imports/rogo/rogo.png";
 
 const NAV_ITEMS = [
   { to: "/study-room",   label: "스터디룸" },
@@ -46,7 +48,7 @@ export default function Nav() {
         title="사이드바 열기/닫기"
         style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 20, background: "none", border: "none", padding: 0, cursor: "pointer" }}
       >
-        <span style={{ fontSize: 22, lineHeight: 1 }}>🌲</span>
+        <img src={logoImg} alt="공숲" style={{ width: 34, height: 34, objectFit: "contain", flexShrink: 0 }} />
         <span style={{ fontFamily: fs, fontWeight: 700, fontSize: 18, color: "#f5e6c8" }}>공숲</span>
         <span style={{ fontSize: 10, padding: "2px 6px", background: "#7a4f2e", color: C.gold, border: `1px solid ${C.inputBr}`, fontWeight: 700 }}>한국사</span>
       </button>
@@ -79,7 +81,10 @@ export default function Nav() {
           <div style={{ width: 20, height: 20, flexShrink: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <ProfileAvatar id={characterId} size={20} />
           </div>
-          <span style={{ fontSize: 13, color: "#f5e6c8", fontFamily: ff }}>{nickname}</span>
+          <span style={{ fontSize: 13, color: "#f5e6c8", fontFamily: ff, display: "flex", alignItems: "center", gap: 3 }}>
+            {isJangwonWinner(nickname) && <span title="장원급제">👑</span>}
+            {nickname}
+          </span>
           <button
             onClick={() => setShowMenu((v) => !v)}
             title="메뉴"
