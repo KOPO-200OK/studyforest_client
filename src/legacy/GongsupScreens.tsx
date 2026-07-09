@@ -6,13 +6,25 @@ import {
   Clock, Play, Pause, RotateCcw,
 } from "lucide-react";
 
-// ── 시간대별 이미지 ──────────────────────────────────────────────
-import morningImg   from "@/imports/image-3.png";
-import afternoonImg from "@/imports/image-7.png";
-import eveningImg   from "@/imports/image-5.png";
+// ── 맵: 공숲 (시간대별 이미지) ─────────────────────────────────────
+import morningImg   from "@/imports/forest/image-3.png";
+import afternoonImg from "@/imports/forest/image-7.png";
+import eveningImg   from "@/imports/forest/image-5.png";
 
-// ── 맵: 서당 (고정 배경, 시간대 없음) ─────────────────────────────
-import seodangImg from "@/imports/dang_a.png";
+// ── 맵: 서당 (시간대별 이미지) ─────────────────────────────────────
+import seodangMorningImg   from "@/imports/Seodang/dang_1.png";
+import seodangAfternoonImg from "@/imports/Seodang/dang_2.png";
+import seodangEveningImg   from "@/imports/Seodang/dang_3.png";
+
+// ── 맵: 카페 (시간대별 이미지) ─────────────────────────────────────
+import cafeMorningImg   from "@/imports/cafe/cafe_1.png";
+import cafeAfternoonImg from "@/imports/cafe/cafe_2.png";
+import cafeEveningImg   from "@/imports/cafe/cafe_3.png";
+
+// ── 맵: 오피스 (시간대별 이미지) ───────────────────────────────────
+import saMorningImg   from "@/imports/sa/sa_1.png";
+import saAfternoonImg from "@/imports/sa/sa_2.png";
+import saEveningImg   from "@/imports/sa/sa_3.png";
 
 // ── 캐릭터 스프라이트 시트 (charId → 이미지) ─────────────────────
 // 8방향 시트: 4열 × 2행
@@ -136,6 +148,7 @@ function getSeatDirection(seatId: number): number {
 import ProfileAvatar from "@/components/ProfileAvatar";
 import { mockAuthApi } from "@/api/mockAuthApi";
 import { mockNoticeApi } from "@/api/mockNoticeApi";
+import { isJangwonWinner } from "@/data/jangwonWinners";
 import { CHARACTERS } from "@/data/characters";
 import { getDisabledSeatIds } from "@/data/seatConfig";
 import { useSidebar } from "@/context/SidebarContext";
@@ -198,26 +211,24 @@ function getTimeOfDay(): TimeOfDay {
   return "evening";
 }
 
+// 시간대별 공통 연출(필터/오버레이/배경색) — 이미지 자체는 맵마다 따로 등록(MAPS.timeImages)
 const TIME_META: Record<TimeOfDay, {
-  src: string; label: string; emoji: string;
+  label: string; emoji: string;
   filter: string; overlay: string; bg: string;
 }> = {
   morning: {
-    src: morningImg,
     label: "아침", emoji: "🌅",
     filter: "none",
     overlay: "transparent",
     bg: "#3a5a2a",
   },
   afternoon: {
-    src: afternoonImg,
     label: "오후", emoji: "☀️",
     filter: "none",
     overlay: "transparent",
     bg: "#2a4a1e",
   },
   evening: {
-    src: eveningImg,
     label: "저녁", emoji: "🌙",
     filter: "none",
     overlay: "transparent",
@@ -609,6 +620,79 @@ export const SEODANG_SEATS: Omit<Seat, "status">[] = [
   { id: 120, x: 942, y: 410, zone: "서당 뒷줄" },
 ];
 
+// 카페 맵 좌석 (id 201~) — 1차 배치, 실측 후 미세조정 필요
+export const CAFE_SEATS: Omit<Seat, "status">[] = [
+  // 창가 2인석 (2줄)
+  { id: 201, x: 130, y: 270, zone: "카페 창가" },
+  { id: 202, x: 256, y: 290, zone: "카페 창가" },
+  { id: 203, x: 130, y: 387, zone: "카페 창가" },
+  { id: 204, x: 256, y: 397, zone: "카페 창가" },
+  // 안쪽 2인석
+  { id: 205, x: 50,  y: 453, zone: "카페 안쪽" },
+  { id: 206, x: 186, y: 463, zone: "카페 안쪽" },
+  { id: 207, x: 37,  y: 570, zone: "카페 안쪽" },
+  { id: 208, x: 170, y: 580, zone: "카페 안쪽" },
+  // 단체석 (긴 테이블)
+  { id: 209, x: 323, y: 317, zone: "카페 단체석" },
+  { id: 210, x: 429, y: 323, zone: "카페 단체석" },
+  { id: 211, x: 323, y: 377, zone: "카페 단체석" },
+  { id: 212, x: 429, y: 383, zone: "카페 단체석" },
+  { id: 213, x: 323, y: 437, zone: "카페 단체석" },
+  { id: 214, x: 429, y: 443, zone: "카페 단체석" },
+  { id: 215, x: 323, y: 497, zone: "카페 단체석" },
+  { id: 216, x: 429, y: 500, zone: "카페 단체석" },
+  // 라운지 (소파)
+  { id: 217, x: 752, y: 323, zone: "카페 라운지" },
+  { id: 218, x: 818, y: 343, zone: "카페 라운지" },
+  { id: 219, x: 719, y: 397, zone: "카페 라운지" },
+  { id: 220, x: 785, y: 443, zone: "카페 라운지" },
+  { id: 221, x: 825, y: 443, zone: "카페 라운지" },
+  // 안쪽 테이블
+  { id: 222, x: 479, y: 537, zone: "카페 테이블" },
+  { id: 223, x: 595, y: 537, zone: "카페 테이블" },
+  { id: 224, x: 685, y: 603, zone: "카페 테이블" },
+  { id: 225, x: 732, y: 600, zone: "카페 테이블" },
+  { id: 226, x: 779, y: 600, zone: "카페 테이블" },
+  { id: 227, x: 831, y: 537, zone: "카페 테이블" },
+  { id: 228, x: 898, y: 537, zone: "카페 테이블" },
+];
+
+// 오피스 맵 좌석 (id 301~) — 1차 배치, 실측 후 미세조정 필요
+export const SA_SEATS: Omit<Seat, "status">[] = [
+  // Zone 1 (원탁)
+  { id: 301, x: 163, y: 160, zone: "Zone 1" },
+  { id: 302, x: 259, y: 160, zone: "Zone 1" },
+  { id: 303, x: 136, y: 203, zone: "Zone 1" },
+  { id: 304, x: 273, y: 200, zone: "Zone 1" },
+  { id: 305, x: 163, y: 247, zone: "Zone 1" },
+  { id: 306, x: 256, y: 247, zone: "Zone 1" },
+  // Zone 2
+  { id: 307, x: 506, y: 80,  zone: "Zone 2" },
+  { id: 308, x: 552, y: 80,  zone: "Zone 2" },
+  { id: 309, x: 506, y: 130, zone: "Zone 2" },
+  { id: 310, x: 552, y: 130, zone: "Zone 2" },
+  // Zone 2-1
+  { id: 311, x: 709, y: 80,  zone: "Zone 2-1" },
+  { id: 312, x: 755, y: 80,  zone: "Zone 2-1" },
+  { id: 313, x: 709, y: 130, zone: "Zone 2-1" },
+  { id: 314, x: 755, y: 130, zone: "Zone 2-1" },
+  // Zone 4
+  { id: 315, x: 469, y: 290, zone: "Zone 4" },
+  { id: 316, x: 562, y: 290, zone: "Zone 4" },
+  { id: 317, x: 469, y: 350, zone: "Zone 4" },
+  { id: 318, x: 562, y: 350, zone: "Zone 4" },
+  // Zone 5
+  { id: 319, x: 745, y: 307, zone: "Zone 5" },
+  { id: 320, x: 765, y: 280, zone: "Zone 5" },
+  { id: 321, x: 805, y: 270, zone: "Zone 5" },
+  { id: 322, x: 842, y: 280, zone: "Zone 5" },
+  { id: 323, x: 862, y: 307, zone: "Zone 5" },
+  // 체리블라썸 허브
+  { id: 324, x: 153, y: 430, zone: "체리블라썸 허브" },
+  { id: 325, x: 273, y: 427, zone: "체리블라썸 허브" },
+  { id: 326, x: 210, y: 477, zone: "체리블라썸 허브" },
+];
+
 // pre-occupied seats for visual context
 const OCCUPIED_IDS = new Set<number>([]);
 
@@ -622,7 +706,7 @@ function makeSeats(rawSeats: Omit<Seat, "status">[]): Seat[] {
   }));
 }
 
-export type MapId = "forest" | "seodang";
+export type MapId = "forest" | "seodang" | "cafe" | "sa";
 
 interface MapDef {
   id: MapId;
@@ -631,11 +715,18 @@ interface MapDef {
   seats: Omit<Seat, "status">[];
   hasTimeOfDay: boolean;
   staticBg?: string;
+  timeImages?: Record<TimeOfDay, string>;
 }
 
 const MAPS: Record<MapId, MapDef> = {
-  forest:  { id: "forest",  label: "공숲",  emoji: "🌲", seats: RAW_SEATS,     hasTimeOfDay: true },
-  seodang: { id: "seodang", label: "서당",  emoji: "📜", seats: SEODANG_SEATS, hasTimeOfDay: false, staticBg: seodangImg },
+  forest:  { id: "forest",  label: "공숲",   emoji: "🌲", seats: RAW_SEATS,     hasTimeOfDay: true,
+    timeImages: { morning: morningImg, afternoon: afternoonImg, evening: eveningImg } },
+  seodang: { id: "seodang", label: "서당",   emoji: "📜", seats: SEODANG_SEATS, hasTimeOfDay: true,
+    timeImages: { morning: seodangMorningImg, afternoon: seodangAfternoonImg, evening: seodangEveningImg } },
+  cafe:    { id: "cafe",    label: "카페",   emoji: "☕", seats: CAFE_SEATS,    hasTimeOfDay: true,
+    timeImages: { morning: cafeMorningImg, afternoon: cafeAfternoonImg, evening: cafeEveningImg } },
+  sa:      { id: "sa",      label: "오피스", emoji: "🏢", seats: SA_SEATS,      hasTimeOfDay: true,
+    timeImages: { morning: saMorningImg, afternoon: saAfternoonImg, evening: saEveningImg } },
 };
 
 const SEAT_STYLE: Record<SeatStatus, { bg: string; border: string; text: string; glow: string }> = {
@@ -759,6 +850,17 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
     "집현전 공터":  "#6a4010",
     "서당 앞줄":    "#5a3a18",
     "서당 뒷줄":    "#3a2a14",
+    "카페 창가":    "#6a4a2a",
+    "카페 안쪽":    "#4a3a2a",
+    "카페 단체석":  "#5a3010",
+    "카페 라운지":  "#3a5a2a",
+    "카페 테이블":  "#7a5020",
+    "Zone 1":       "#1a5a7a",
+    "Zone 2":       "#2a4a6a",
+    "Zone 2-1":     "#2a4a6a",
+    "Zone 4":       "#6a5a2a",
+    "Zone 5":       "#7a3a2a",
+    "체리블라썸 허브": "#a05070",
   };
 
   return (
@@ -776,10 +878,10 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
 
         {/* 맵 · 채널 선택 */}
         <Panel title="맵 · 채널" icon={<span style={{ fontSize: 13 }}>🗺️</span>} accent="linear-gradient(90deg,#162e12,#1e3e18)">
-          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 6, marginBottom: 8 }}>
             {Object.values(MAPS).map(m => (
               <button key={m.id} onClick={() => handleSelectMap(m.id)}
-                style={{ flex: 1, padding: "6px 4px", fontSize: 11, fontWeight: 700, fontFamily: ff, cursor: "pointer",
+                style={{ padding: "6px 4px", fontSize: 11, fontWeight: 700, fontFamily: ff, cursor: "pointer",
                   background: mapId === m.id ? "linear-gradient(135deg,#3a6030,#1e4018)" : "rgba(139,94,60,0.12)",
                   color: mapId === m.id ? "#c0f0a0" : "#9a7040",
                   border: `2px solid ${mapId === m.id ? "#1a3010" : "#5a4020"}` }}>
@@ -1012,9 +1114,9 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
       <div style={{ flex: 1, minWidth: 0, background: currentMap.hasTimeOfDay ? timeMeta.bg : "#0e0a06", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", transition: "background 0.8s" }}>
         <div style={{ position: "relative", width: `min(100%, calc((100vh - 52px) * ${MAP_W / MAP_H}))`, aspectRatio: `${MAP_W} / ${MAP_H}`, overflow: "hidden" }}>
 
-          {/* Map image — 시간대 필터 적용(공숲) 또는 고정 배경(서당) */}
+          {/* Map image — 맵마다 등록된 시간대별 이미지(공숲/카페/오피스) 또는 고정 배경(서당) */}
           <img
-            src={currentMap.hasTimeOfDay ? timeMeta.src : currentMap.staticBg}
+            src={currentMap.hasTimeOfDay ? currentMap.timeImages?.[timeOfDay] : currentMap.staticBg}
             alt={currentMap.label}
             style={{ display: "block", width: "100%", height: "100%", imageRendering: "pixelated", filter: currentMap.hasTimeOfDay ? timeMeta.filter : "none", transition: "filter 0.8s" }}
           />
@@ -1073,7 +1175,8 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
               title="클릭하여 공지사항 보기"
               style={{ position: "absolute", left: `${(512 / MAP_W) * 100}%`, top: `${(150 / MAP_H) * 100}%`, transform: "translate(-50%, -50%)", zIndex: 22, width: 46, height: 34, cursor: "pointer" }}
             >
-              <div style={{ position: "absolute", top: -22, left: "50%", transform: "translateX(-50%)", background: "#c04040", color: "#fff", fontSize: 9, fontWeight: 700, padding: "2px 7px", whiteSpace: "nowrap", border: "1px solid #7a1010", boxShadow: "1px 1px 0 #4a0808", animation: "noticeBlink 1.4s ease-in-out infinite" }}>
+              {/* 위쪽 "誠敬" 현판과 겹치지 않도록 라벨을 옆(오른쪽)에 배치 */}
+              <div style={{ position: "absolute", top: "50%", left: "calc(100% + 6px)", transform: "translateY(-50%)", background: "#c04040", color: "#fff", fontSize: 9, fontWeight: 700, padding: "2px 7px", whiteSpace: "nowrap", border: "1px solid #7a1010", boxShadow: "1px 1px 0 #4a0808", animation: "noticeBlink 1.4s ease-in-out infinite" }}>
                 👆 클릭
               </div>
             </div>
@@ -1091,7 +1194,9 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
               </div>
               {/* 닉네임 — 캐릭터 이미지 높이와 무관하게 좌석 좌표 바로 아래 고정 */}
               <div style={{ position: "absolute", left: `${(seatedSeat.x / MAP_W) * 100}%`, top: `${(seatedSeat.y / MAP_H) * 100}%`, transform: "translate(-50%, 2px)", zIndex: 25, textAlign: "center", pointerEvents: "none" }}>
-                <span style={{ background: "rgba(16,8,2,0.88)", color: "#f5e6c8", fontSize: 9, padding: "2px 7px", border: "1px solid #8b5e3c", whiteSpace: "nowrap", fontFamily: ff, fontWeight: 700, boxShadow: "1px 1px 0 #3a1808" }}>{nickname}</span>
+                <span style={{ background: "rgba(16,8,2,0.88)", color: "#f5e6c8", fontSize: 9, padding: "2px 7px", border: "1px solid #8b5e3c", whiteSpace: "nowrap", fontFamily: ff, fontWeight: 700, boxShadow: "1px 1px 0 #3a1808" }}>
+                  {isJangwonWinner(nickname) && "👑 "}{nickname}
+                </span>
               </div>
             </>
           )}
@@ -1114,7 +1219,9 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
                 <div style={{ position: "absolute", bottom: 0, right: 0, fontSize: 9, background: "#f5c842", border: "1px solid #b88010", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "1px 1px 0 #7a6010" }}>✏️</div>
               </div>
               <div>
-                <div style={{ fontFamily: fs, fontWeight: 700, fontSize: 13, color: "#2a1808" }}>{nickname}</div>
+                <div style={{ fontFamily: fs, fontWeight: 700, fontSize: 13, color: "#2a1808" }}>
+                  {isJangwonWinner(nickname) && "👑 "}{nickname}
+                </div>
                 <div style={{ fontSize: 9, color: "#9a7040", fontFamily: ff, marginTop: 2 }}>캐릭터 클릭하여 변경</div>
                 <div style={{ fontSize: 10, marginTop: 3, color: "#7a5828", fontFamily: ff }}>⏱ 오늘 <strong style={{ color: "#c04040" }}>2h 34m</strong></div>
               </div>

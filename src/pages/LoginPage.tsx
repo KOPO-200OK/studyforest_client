@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button, Card, Input } from "@/components/ui";
 import { C, ff, fs } from "@/styles/tokens";
 import { mockAuthApi } from "@/api/mockAuthApi";
+import logoImg from "@/imports/rogo/rogo.png";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -36,7 +37,7 @@ export default function LoginPage() {
     <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.pageBg, fontFamily: ff }}>
       <Card style={{ width: 320, display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, marginBottom: 4 }}>
-          <span style={{ fontSize: 32, lineHeight: 1 }}>🌲</span>
+          <img src={logoImg} alt="공숲" style={{ width: 64, height: 64, objectFit: "contain" }} />
           <span style={{ fontFamily: fs, fontWeight: 700, fontSize: 20, color: C.inkDark }}>공숲</span>
           <span style={{ fontSize: 11, color: C.inkMid }}>로그인하고 한국사 공부를 시작해보세요</span>
         </div>

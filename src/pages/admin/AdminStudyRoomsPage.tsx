@@ -1,8 +1,15 @@
 import { useState } from "react";
 import { Card } from "@/components/ui";
 import { fs, ff, C } from "@/styles/tokens";
-import { RAW_SEATS } from "@/legacy/GongsupScreens";
+import { RAW_SEATS, SEODANG_SEATS, CAFE_SEATS, SA_SEATS } from "@/legacy/GongsupScreens";
 import { getDisabledSeatIds, setSeatDisabled } from "@/data/seatConfig";
+
+const MAP_SEAT_GROUPS = [
+  { mapLabel: "🌲 공숲", seats: RAW_SEATS },
+  { mapLabel: "📜 서당", seats: SEODANG_SEATS },
+  { mapLabel: "☕ 카페", seats: CAFE_SEATS },
+  { mapLabel: "🏢 오피스", seats: SA_SEATS },
+];
 
 export default function AdminStudyRoomsPage() {
   const [disabledIds, setDisabledIds] = useState(() => new Set(getDisabledSeatIds()));
@@ -13,19 +20,22 @@ export default function AdminStudyRoomsPage() {
     setDisabledIds(new Set(getDisabledSeatIds()));
   }
 
-  const zones = Array.from(new Set(RAW_SEATS.map((s) => s.zone)));
-
   return (
     <div>
       <p style={{ fontFamily: ff, color: "#9aaa80", fontSize: 12, marginBottom: 16 }}>
         좌석을 클릭하면 스터디룸에서 해당 좌석이 이용 불가(비활성화) 처리됩니다. 변경 사항은 스터디룸에 새로 입장할 때 반영됩니다.
       </p>
 
-      {zones.map((zone) => (
+      {MAP_SEAT_GROUPS.map(({ mapLabel, seats }) => {
+        const zones = Array.from(new Set(seats.map((s) => s.zone)));
+        return (
+        <div key={mapLabel} style={{ marginBottom: 24 }}>
+          <div style={{ fontFamily: fs, fontWeight: 700, fontSize: 14, color: "#f5e6c8", marginBottom: 10 }}>{mapLabel}</div>
+          {zones.map((zone) => (
         <Card key={zone} style={{ marginBottom: 16 }}>
           <div style={{ fontFamily: fs, fontWeight: 700, fontSize: 13, color: "#2a1808", marginBottom: 10 }}>{zone}</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {RAW_SEATS.filter((s) => s.zone === zone).map((s) => {
+            {seats.filter((s) => s.zone === zone).map((s) => {
               const disabled = disabledIds.has(s.id);
               return (
                 <button
@@ -46,7 +56,10 @@ export default function AdminStudyRoomsPage() {
             })}
           </div>
         </Card>
-      ))}
+          ))}
+        </div>
+        );
+      })}
 
       <div style={{ display: "flex", gap: 14, fontSize: 11, fontFamily: ff, color: "#9aaa80" }}>
         <span><span style={{ display: "inline-block", width: 10, height: 10, background: "rgba(46,96,32,0.5)", border: "2px solid #1a5010", marginRight: 4, verticalAlign: "middle" }} />이용 가능</span>
