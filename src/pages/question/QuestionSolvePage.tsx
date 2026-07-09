@@ -2,19 +2,20 @@ import { useNavigate } from "react-router-dom";
 import { Card, Button } from "@/components/ui";
 import { fs, ff } from "@/styles/tokens";
 
-/** ✍️ 문제 풀이 — ERD 화면설계서 기준 스텁. TODO: 실제 구현 */
+/** ✍️ 문제 풀이 — 시대별/랜덤/모의고사 각 화면에서 실제 풀이가 이뤄진다. 이 화면은 안내용 허브. */
 export default function QuestionSolvePage() {
   const nav = useNavigate();
   return (
     <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 28, background: "linear-gradient(160deg,#1a2a14,#0e1a0a)" }}>
       <button onClick={() => nav("/question-bank")} style={{ background: "none", border: "none", color: "#c8a060", cursor: "pointer", fontFamily: ff, fontSize: 12, marginBottom: 16 }}>← 문제은행 홈</button>
       <h2 style={{ fontFamily: fs, color: "#f5e6c8", fontSize: 18, marginBottom: 16 }}>✍️ 문제 풀이</h2>
-      <Card>
+      <Card style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420 }}>
         <div style={{ fontFamily: ff, fontSize: 13, color: "#5a3010", lineHeight: 1.8 }}>
-          문제 본문·객관식 보기를 표시하고 채점 후 정답·해설을 보여줍니다.
-          <div style={{ marginTop: 12, color: "#9a7040", fontSize: 11 }}>🚧 구현 예정 (ERD 화면설계서 참고)</div>
+          시대별 문제, 랜덤 문제, 모의고사 중 하나를 골라 풀어보세요.
         </div>
-        <div style={{ marginTop: 16 }}><Button variant="green" onClick={() => nav("/question-bank/solve")}>문제 풀이 화면으로</Button></div>
+        <Button variant="green" onClick={() => nav("/question-bank/periods")}>🏛️ 시대별 문제</Button>
+        <Button variant="green" onClick={() => nav("/question-bank/random")}>🎲 랜덤 문제</Button>
+        <Button variant="green" onClick={() => nav("/question-bank/mock-exams")}>📝 모의고사</Button>
       </Card>
     </div>
   );

@@ -34,9 +34,16 @@ export function getJangwonWinners(): JangwonWinner[] {
   return loadWinners().slice().sort((a, b) => b.year - a.year);
 }
 
-/** 해당 연도의 장원급제 수상자를 등록/교체한다 (관리자가 신청을 수락했을 때 호출) */
+/** 연도별로 묶은 장원급제 수상자 목록 (한 해에 여러 명이 있을 수 있음, 최신 연도순) */
+export function getJangwonWinnersByYear(): { year: number; winners: JangwonWinner[] }[] {
+  const winners = getJangwonWinners();
+  const years = Array.from(new Set(winners.map((w) => w.year))).sort((a, b) => b - a);
+  return years.map((year) => ({ year, winners: winners.filter((w) => w.year === year) }));
+}
+
+/** 해당 연도의 장원급제 수상자를 등록한다 (한 해에 여러 명 등록 가능, 관리자가 신청을 수락했을 때 호출) */
 export function setJangwonWinner(winner: JangwonWinner): void {
-  const winners = loadWinners().filter((w) => w.year !== winner.year);
+  const winners = loadWinners().filter((w) => !(w.year === winner.year && w.nickname === winner.nickname));
   winners.push(winner);
   saveWinners(winners);
 }
