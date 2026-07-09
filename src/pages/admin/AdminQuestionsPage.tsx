@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Card, Button, Input } from "@/components/ui";
 import { fs, ff, C } from "@/styles/tokens";
 import { mockQuestionApi, type MockQuestionOption } from "@/api/mockQuestionApi";
@@ -40,28 +40,52 @@ export default function AdminQuestionsPage() {
     setOptions((prev) => prev.map((o, i) => (i === index ? { ...o, ...patch } : o)));
   }
 
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!topicName.trim() || !questionContent.trim() || options.some((o) => !o.optionContent.trim())) {
-      setError("모든 항목을 입력해주세요");
-      return;
-    }
-    if (!options.some((o) => o.isCorrect)) {
-      setError("정답을 하나 선택해주세요");
-      return;
-    }
-    setError(null);
-    mockQuestionApi.addQuestion({ periodCode, topicName: topicName.trim(), difficulty, examLevel, questionContent: questionContent.trim(), options });
-    setQuestions(mockQuestionApi.listQuestions());
+  useEffect(() => {
+  mockQuestionApi.loadQuestions()
+    .then(setQuestions)
+    .catch((err) => setError(err instanceof Error ? err.message : "문제 목록을 불러오지 못했습니다"));
+}, []);
+
+async function handleSubmit(e: FormEvent) {
+  e.preventDefault();
+  if (!topicName.trim() || !questionContent.trim() || options.some((o) => !o.optionContent.trim())) {
+    setError("모든 항목을 입력해주세요");
+    return;
+  }
+  if (!options.some((o) => o.isCorrect)) {
+    setError("정답을 하나 선택해주세요");
+    return;
+  }
+
+  setError(null);
+
+  try {
+    await mockQuestionApi.addQuestion({
+      periodCode,
+      topicName: topicName.trim(),
+      difficulty,
+      examLevel,
+      questionContent: questionContent.trim(),
+      options,
+    });
+
+    setQuestions(await mockQuestionApi.loadQuestions());
     setTopicName("");
     setQuestionContent("");
     setOptions(EMPTY_OPTIONS);
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "문제 등록에 실패했습니다");
   }
+}
 
-  function handleDelete(questionId: number) {
-    mockQuestionApi.deleteQuestion(questionId);
+async function handleDelete(questionId: number) {
+  try {
+    await mockQuestionApi.deleteQuestion(questionId);
     setQuestions(mockQuestionApi.listQuestions());
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "문제 삭제에 실패했습니다");
   }
+}
 
   return (
     <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
@@ -151,9 +175,9 @@ export default function AdminQuestionsPage() {
                 </div>
                 <div style={{ color: "#2a1808" }}>{q.questionContent}</div>
               </div>
-              <Button variant="red" onClick={() => handleDelete(q.questionId)} style={{ padding: "4px 10px", fontSize: 10, flexShrink: 0 }}>
+              <Button variant="red" onClick={() => void handleDelete(q.questionId)} style={{ padding: "4px 10px", fontSize: 10, flexShrink: 0 }}>
                 삭제
-              </Button>
+                </Button>
             </div>
           ))}
           {questions.length === 0 && (

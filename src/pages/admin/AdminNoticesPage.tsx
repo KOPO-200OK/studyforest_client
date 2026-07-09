@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Card, Button, Input } from "@/components/ui";
 import { fs, ff, C } from "@/styles/tokens";
 import { mockNoticeApi } from "@/api/mockNoticeApi";
+
 
 const inputStyle = {
   fontSize: 12, padding: "8px 12px", background: C.inputBg, border: `1px solid ${C.inputBr}`,
@@ -19,24 +20,40 @@ export default function AdminNoticesPage() {
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!title.trim() || !date || !body.trim()) {
-      setError("모든 항목을 입력해주세요");
-      return;
-    }
-    setError(null);
-    mockNoticeApi.addNotice({ title: title.trim(), date, body: body.trim() });
-    setNotices(mockNoticeApi.listNotices());
+  useEffect(() => {
+  mockNoticeApi.loadNotices()
+    .then(setNotices)
+    .catch((err) => setError(err instanceof Error ? err.message : "공지사항을 불러오지 못했습니다"));
+}, []);
+
+  async function handleSubmit(e: FormEvent) {
+  e.preventDefault();
+  if (!title.trim() || !date || !body.trim()) {
+    setError("모든 항목을 입력해주세요");
+    return;
+  }
+
+  setError(null);
+
+  try {
+    await mockNoticeApi.addNotice({ title: title.trim(), date, body: body.trim() });
+    setNotices(await mockNoticeApi.loadNotices());
     setTitle("");
     setDate(today());
     setBody("");
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "공지사항 등록에 실패했습니다");
   }
+}
 
-  function handleDelete(id: number) {
-    mockNoticeApi.deleteNotice(id);
+  async function handleDelete(id: number) {
+  try {
+    await mockNoticeApi.deleteNotice(id);
     setNotices(mockNoticeApi.listNotices());
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "공지사항 삭제에 실패했습니다");
   }
+}
 
   return (
     <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
@@ -89,9 +106,9 @@ export default function AdminNoticesPage() {
                 </div>
                 <div style={{ color: "#5a3010" }}>{n.body}</div>
               </div>
-              <Button variant="red" onClick={() => handleDelete(n.id)} style={{ padding: "4px 10px", fontSize: 10, flexShrink: 0 }}>
+                <Button variant="red" onClick={() => void handleDelete(n.id)} style={{ padding: "4px 10px", fontSize: 10, flexShrink: 0 }}>
                 삭제
-              </Button>
+                </Button>
             </div>
           ))}
           {notices.length === 0 && (

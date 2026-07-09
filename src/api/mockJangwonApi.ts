@@ -1,13 +1,6 @@
-// ============================================================
-// "장원급제 신청" 목업 저장소 — 백엔드 준비 전까지 임시 사용.
-// localStorage에 신청 내역(이미지는 base64)을 저장한다.
-// 백엔드가 준비되면 이 파일을 지우고 실제 업로드 API로 교체.
-// ============================================================
-
 import { DEFAULT_CHARACTER_ID } from "@/data/characters";
 import { setJangwonWinner } from "@/data/jangwonWinners";
-
-const APPLICATIONS_KEY = "gongsoop_mock_jangwon_applications";
+import { jangwonApi, type JangwonApplicationResponse } from "./jangwonApi";
 
 export type JangwonApplicationStatus = "pending" | "approved" | "rejected";
 
@@ -17,53 +10,84 @@ export interface JangwonApplication {
   nickname: string;
   characterId?: number;
   imageDataUrl: string;
-  submittedAt: string; // ISO
+  submittedAt: string;
   status: JangwonApplicationStatus;
   rejectReason?: string;
-  reviewedAt?: string; // ISO
+  reviewedAt?: string;
 }
 
-export type CreateApplicationInput = Omit<JangwonApplication, "id" | "submittedAt" | "status" | "rejectReason" | "reviewedAt">;
+export type CreateApplicationInput = Omit<
+  JangwonApplication,
+  "id" | "submittedAt" | "status" | "rejectReason" | "reviewedAt"
+>;
 
-function loadApplications(): JangwonApplication[] {
-  const raw = localStorage.getItem(APPLICATIONS_KEY);
-  if (!raw) return [];
-  const parsed = JSON.parse(raw) as JangwonApplication[];
-  return parsed.map((a) => ({ ...a, status: a.status ?? "pending" }));
+let cache: JangwonApplication[] = [];
+
+function toStatus(status: string): JangwonApplicationStatus {
+  if (status === "APPROVED") return "approved";
+  if (status === "REJECTED") return "rejected";
+  return "pending";
 }
 
-function saveApplications(applications: JangwonApplication[]) {
-  localStorage.setItem(APPLICATIONS_KEY, JSON.stringify(applications));
+function toCharacterId(characterName: string | null | undefined): number {
+  const id = Number(characterName);
+  return Number.isFinite(id) && id > 0 ? id : DEFAULT_CHARACTER_ID;
+}
+
+function mapApplication(a: JangwonApplicationResponse): JangwonApplication {
+  return {
+    id: a.jangwonApplicationId,
+    email: a.displayName,
+    nickname: a.displayNickname,
+    characterId: toCharacterId(a.characterName),
+    imageDataUrl: a.certificateImageUrl,
+    submittedAt: a.appliedAt,
+    status: toStatus(a.status),
+    rejectReason: a.adminMemo ?? undefined,
+    reviewedAt: a.reviewedAt ?? undefined,
+  };
 }
 
 export const mockJangwonApi = {
   listApplications(): JangwonApplication[] {
-    return loadApplications().slice().sort((a, b) => (a.submittedAt < b.submittedAt ? 1 : -1));
+    return cache.slice().sort((a, b) => (a.submittedAt < b.submittedAt ? 1 : -1));
   },
 
-  getApplicationByEmail(email: string): JangwonApplication | null {
-    return loadApplications().find((a) => a.email === email) ?? null;
+  getApplicationByEmail(_email: string): JangwonApplication | null {
+    return cache[0] ?? null;
   },
 
-  /** 신청 — 같은 이메일로 이미 신청한 게 있으면 덮어씀(재신청, 검토 상태는 초기화) */
-  addApplication(input: CreateApplicationInput): JangwonApplication {
-    const applications = loadApplications().filter((a) => a.email !== input.email);
-    const nextId = loadApplications().reduce((max, a) => Math.max(max, a.id), 0) + 1;
-    const application: JangwonApplication = { ...input, id: nextId, submittedAt: new Date().toISOString(), status: "pending" };
-    applications.push(application);
-    saveApplications(applications);
+  async loadMyApplications(): Promise<JangwonApplication[]> {
+    const page = await jangwonApi.listMyApplications({ page: 0, size: 10 });
+    cache = page.content.map(mapApplication);
+    return mockJangwonApi.listApplications();
+  },
+
+  async loadAdminApplications(): Promise<JangwonApplication[]> {
+    const page = await jangwonApi.listAdminApplications({ page: 0, size: 50 });
+    cache = page.content.map(mapApplication);
+    return mockJangwonApi.listApplications();
+  },
+
+  async addApplication(input: CreateApplicationInput): Promise<JangwonApplication> {
+    const created = await jangwonApi.apply({
+      displayNickname: input.nickname,
+      characterName: String(input.characterId ?? DEFAULT_CHARACTER_ID),
+      characterImageUrl: null,
+      certificateImageUrl: input.imageDataUrl,
+    });
+
+    const application = mapApplication(created);
+    cache = [application, ...cache.filter((a) => a.id !== application.id)];
     return application;
   },
 
-  /** 관리자 수락 — 신청자를 올해의 장원급제 수상자로 등록 */
-  approveApplication(id: number): void {
-    const applications = loadApplications();
-    const application = applications.find((a) => a.id === id);
-    if (!application) return;
-    application.status = "approved";
-    application.reviewedAt = new Date().toISOString();
-    delete application.rejectReason;
-    saveApplications(applications);
+  async approveApplication(id: number): Promise<void> {
+    const approved = await jangwonApi.approve(id);
+    const application = mapApplication(approved);
+
+    cache = cache.map((a) => (a.id === id ? application : a));
+
     setJangwonWinner({
       year: new Date().getFullYear(),
       nickname: application.nickname,
@@ -71,18 +95,15 @@ export const mockJangwonApi = {
     });
   },
 
-  /** 관리자 반려 — 사유와 함께 신청자에게 안내 */
-  rejectApplication(id: number, reason: string): void {
-    const applications = loadApplications();
-    const application = applications.find((a) => a.id === id);
-    if (!application) return;
-    application.status = "rejected";
-    application.rejectReason = reason;
-    application.reviewedAt = new Date().toISOString();
-    saveApplications(applications);
+  async rejectApplication(id: number, reason: string): Promise<void> {
+    const rejected = await jangwonApi.reject(id, reason);
+    const application = mapApplication(rejected);
+
+    cache = cache.map((a) => (a.id === id ? application : a));
   },
 
-  deleteApplication(id: number): void {
-    saveApplications(loadApplications().filter((a) => a.id !== id));
+  async deleteApplication(id: number): Promise<void> {
+    await jangwonApi.delete(id);
+    cache = cache.filter((a) => a.id !== id);
   },
 };

@@ -34,12 +34,16 @@ export default function Nav() {
     navigate("/login", { replace: true });
   }
 
-  function handleWithdraw() {
-    if (!confirm("정말 회원을 탈퇴하시겠어요? 저장된 계정 정보가 모두 삭제됩니다.")) return;
-    mockAuthApi.withdraw();
+  async function handleWithdraw() {
+  if (!confirm("정말 회원을 탈퇴하시겠어요? 저장된 계정 정보가 모두 삭제됩니다.")) return;
+  try {
+    await mockAuthApi.withdraw();
     setShowMenu(false);
     navigate("/login", { replace: true });
+  } catch (err) {
+    alert(err instanceof Error ? err.message : "회원탈퇴에 실패했습니다");
   }
+}
 
   return (
     <nav style={{ height: 52, flexShrink: 0, display: "flex", alignItems: "center", padding: "0 16px", gap: 4, zIndex: 50, background: C.navBg, borderBottom: `3px solid ${C.navBr}`, boxShadow: `0 3px 0 ${C.sidebarBr}, 0 4px 20px rgba(0,0,0,0.65)` }}>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, Button } from "@/components/ui";
 import { fs, ff, C } from "@/styles/tokens";
 import { mockJangwonApi } from "@/api/mockJangwonApi";
@@ -9,22 +9,31 @@ export default function AdminJangwonPage() {
   const [applications, setApplications] = useState(() => mockJangwonApi.listApplications());
   const [preview, setPreview] = useState<string | null>(null);
 
-  function handleDelete(id: number) {
+  async function loadApplications() {
+    const loaded = await mockJangwonApi.loadAdminApplications();
+    setApplications(loaded);
+  }
+
+  useEffect(() => {
+    void loadApplications();
+  }, []);
+
+  async function handleDelete(id: number) {
     if (!confirm("이 신청을 삭제할까요?")) return;
-    mockJangwonApi.deleteApplication(id);
+    await mockJangwonApi.deleteApplication(id);
     setApplications(mockJangwonApi.listApplications());
   }
 
-  function handleApprove(id: number) {
+  async function handleApprove(id: number) {
     if (!confirm("이 신청을 수락하고 올해의 장원급제로 등록할까요?")) return;
-    mockJangwonApi.approveApplication(id);
+    await mockJangwonApi.approveApplication(id);
     setApplications(mockJangwonApi.listApplications());
   }
 
-  function handleReject(id: number) {
+  async function handleReject(id: number) {
     const reason = prompt("반려 사유를 입력해주세요");
     if (!reason) return;
-    mockJangwonApi.rejectApplication(id, reason);
+    await mockJangwonApi.rejectApplication(id, reason);
     setApplications(mockJangwonApi.listApplications());
   }
 
@@ -69,15 +78,15 @@ export default function AdminJangwonPage() {
               <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
                 {a.status === "pending" && (
                   <>
-                    <Button variant="green" onClick={() => handleApprove(a.id)} style={{ padding: "4px 10px", fontSize: 10 }}>
+                    <Button variant="green" onClick={() => void handleApprove(a.id)} style={{ padding: "4px 10px", fontSize: 10 }}>
                       수락
                     </Button>
-                    <Button variant="red" onClick={() => handleReject(a.id)} style={{ padding: "4px 10px", fontSize: 10 }}>
+                    <Button variant="red" onClick={() => void handleReject(a.id)} style={{ padding: "4px 10px", fontSize: 10 }}>
                       반려
                     </Button>
                   </>
                 )}
-                <Button variant="red" onClick={() => handleDelete(a.id)} style={{ padding: "4px 10px", fontSize: 10 }}>
+                <Button variant="red" onClick={() => void handleDelete(a.id)} style={{ padding: "4px 10px", fontSize: 10 }}>
                   삭제
                 </Button>
               </div>

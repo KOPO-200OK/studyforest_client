@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent } from "react";
 import { C, ff, fs } from "@/styles/tokens";
 import { Button } from "@/components/ui";
 import ProfileAvatar from "@/components/ProfileAvatar";
@@ -25,9 +25,23 @@ export default function JangwonPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(existing?.imageDataUrl ?? null);
   const [dragOver, setDragOver] = useState(false);
   const [application, setApplication] = useState<JangwonApplication | null>(existing);
-  const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const winners = getJangwonWinners();
+
+  useEffect(() => {
+    if (!email) return;
+
+    mockJangwonApi.loadMyApplications()
+      .then((applications) => {
+        const latest = applications[0] ?? null;
+        setApplication(latest);
+        setImagePreview(latest?.imageDataUrl ?? null);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "장원급제 신청 내역을 불러오지 못했습니다");
+      });
+  }, [email]);
+    const [error, setError] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const winners = getJangwonWinners();
 
   function handleFile(file: File | undefined) {
     if (!file) return;
@@ -47,21 +61,27 @@ export default function JangwonPage() {
     handleFile(e.dataTransfer.files?.[0]);
   }
 
-  function handleSubmit() {
-    if (!email) return;
-    if (!imagePreview) {
-      setError("인증 이미지를 첨부해주세요");
-      return;
-    }
-    const created = mockJangwonApi.addApplication({
+  async function handleSubmit() {
+  if (!email) return;
+  if (!imagePreview) {
+    setError("인증 이미지를 첨부해주세요");
+    return;
+  }
+
+  try {
+    const created = await mockJangwonApi.addApplication({
       email,
       nickname: account?.nickname ?? "학습자",
       characterId: account?.characterId ?? DEFAULT_CHARACTER_ID,
       imageDataUrl: imagePreview,
     });
+
     setApplication(created);
     setError(null);
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "장원급제 신청에 실패했습니다");
   }
+}
 
   return (
     <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 28, background: "linear-gradient(160deg,#1a2a14,#0e1a0a)" }}>
@@ -154,7 +174,7 @@ export default function JangwonPage() {
               </div>
             )}
 
-            <Button variant="green" block onClick={handleSubmit}>
+            <Button variant="green" block onClick={() => void handleSubmit()}>
               {application ? "다시 신청하기" : "신청하기"}
             </Button>
           </div>
