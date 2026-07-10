@@ -23,6 +23,7 @@ interface MemberResponse {
   birthdate: string;
   email: string;
   userRole: "USER" | "ADMIN" | string;
+  characterId: number;
 }
 
 interface LoginResponse {
@@ -66,7 +67,7 @@ function toAccount(member: MemberResponse, profile?: LocalProfile): MockAccount 
     userRole: member.userRole,
     isAdmin: member.userRole === "ADMIN",
     nickname: profile?.nickname ?? member.name,
-    characterId: profile?.characterId ?? DEFAULT_CHARACTER_ID,
+    characterId: member.characterId ?? profile?.characterId ?? DEFAULT_CHARACTER_ID,
   };
 }
 
@@ -74,7 +75,19 @@ export const mockAuthApi = {
   async login(email: string, password: string): Promise<void> {
     const response = await api.post<LoginResponse>("/auth/login", { email, password });
     tokenStore.set(response.accessToken);
-    saveCurrentMember(response.member);
+    try {
+      const pendingCharacterId = loadProfiles()[response.member.email]?.characterId;
+      if (pendingCharacterId && pendingCharacterId !== response.member.characterId) {
+        const updated = await api.patch<{ characterId: number }>("/members/me/character", {
+          characterId: pendingCharacterId,
+        });
+        response.member.characterId = updated.characterId;
+      }
+      saveCurrentMember(response.member);
+    } catch (error) {
+      tokenStore.clear();
+      throw error;
+    }
   },
 
   async signup(email: string, password: string, name: string, birthDate: string): Promise<void> {
@@ -92,10 +105,16 @@ export const mockAuthApi = {
     saveProfiles(profiles);
   },
 
-  setCharacter(email: string, characterId: number): void {
+  async setCharacter(email: string, characterId: number): Promise<void> {
+    const updated = await api.patch<{ characterId: number }>("/members/me/character", { characterId });
     const profiles = loadProfiles();
-    profiles[email] = { ...(profiles[email] ?? {}), characterId };
+    profiles[email] = { ...(profiles[email] ?? {}), characterId: updated.characterId };
     saveProfiles(profiles);
+    const member = loadCurrentMember();
+    if (member?.email === email) {
+      member.characterId = updated.characterId;
+      saveCurrentMember(member);
+    }
   },
 
   getCurrentEmail(): string | null {

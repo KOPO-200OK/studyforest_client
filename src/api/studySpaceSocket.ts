@@ -1,16 +1,13 @@
 import { Client, type IMessage, type StompSubscription } from "@stomp/stompjs";
 import { tokenStore } from "@/api/client";
-import type { SessionTick, StudySession } from "@/api/studySpaceApi";
+import type { SessionTick } from "@/api/studySpaceApi";
 
 export interface SeatEvent {
   type: "OCCUPIED" | "VACATED" | "DISCONNECTED" | "RECONNECTED" | "PAUSED" | "RESUMED" | "DISABLED";
   channelId: number;
   seatId: number;
   seatNo: number;
-  occupantName: string | null;
-  studySessionId: number | null;
-  sessionStatus: StudySession["status"] | null;
-  at: string;
+  characterId: number | null;
 }
 
 interface StudySpaceSocketOptions {

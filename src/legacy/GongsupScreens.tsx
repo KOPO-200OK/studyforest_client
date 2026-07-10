@@ -567,7 +567,7 @@ export function HomePage({ todos, remove, add, aiInput, setAiInput }: {
 
 /* ── Seat system ──────────────────────────────────────────────── */
 type SeatStatus = "available" | "selected" | "occupied" | "disabled";
-interface Seat { id: number; serverId?: number; x: number; y: number; zone: string; status: SeatStatus; }
+interface Seat { id: number; serverId?: number; characterId?: number; x: number; y: number; zone: string; status: SeatStatus; }
 
 const MAP_W = 1022;
 const MAP_H = 620;
@@ -848,6 +848,7 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
           return {
             ...config,
             serverId: serverSeat?.seatId,
+            characterId: serverSeat?.characterId ?? undefined,
             status: !serverSeat || !serverSeat.active ? "disabled"
               : serverSeat.occupied ? "occupied"
               : "available",
@@ -877,9 +878,9 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   function applySeatEvent(event: SeatEvent) {
     setSeats(current => current.map(seat => {
       if (seat.serverId !== event.seatId) return seat;
-      if (event.type === "VACATED") return { ...seat, status: "available" };
-      if (event.type === "DISABLED") return { ...seat, status: "disabled" };
-      return { ...seat, status: "occupied" };
+      if (event.type === "VACATED") return { ...seat, status: "available", characterId: undefined };
+      if (event.type === "DISABLED") return { ...seat, status: "disabled", characterId: undefined };
+      return { ...seat, status: "occupied", characterId: event.characterId ?? seat.characterId };
     }));
     if (event.type === "VACATED") {
       setSelectedId(current => current === event.seatNo ? null : current);
@@ -931,6 +932,9 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
 
   const selectedSeat = seats.find(s => s.id === selectedId) ?? null;
   const seatedSeat   = seats.find(s => s.id === seatedAt)   ?? null;
+  const otherOccupiedSeats = seats.filter(
+    seat => seat.status === "occupied" && seat.id !== seatedAt && seat.characterId !== undefined,
+  );
 
   const handleSeatClick = (id: number) => setSelectedId(prev => prev === id ? null : id);
 
@@ -940,7 +944,7 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
     setSeatError(null);
     try {
       const session = await studySpaceApi.occupySeat(channel.studyChannelId, selectedSeat.serverId);
-      setSeats(ss => ss.map(s => s.id === selectedSeat.id ? { ...s, status: "occupied" } : s));
+      setSeats(ss => ss.map(s => s.id === selectedSeat.id ? { ...s, status: "occupied", characterId: char } : s));
       setSeatedAt(selectedSeat.id);
       setStudySessionId(session.studySessionId);
       setTimerSecs(session.accumulatedSeconds);
@@ -965,7 +969,7 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
     setSeatError(null);
     try {
       await studySpaceApi.leaveSeat(studySessionId);
-      setSeats(ss => ss.map(s => s.id === seatedAt ? { ...s, status: "available" } : s));
+      setSeats(ss => ss.map(s => s.id === seatedAt ? { ...s, status: "available", characterId: undefined } : s));
       setSeatedAt(null);
       setStudySessionId(null);
       setTimerOn(false);
@@ -1322,6 +1326,16 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
 
           {/* 공지사항 모달 */}
           {showNotice && <NoticeBoardModal onClose={() => setShowNotice(false)} />}
+
+          {/* Other occupants — 공개 프로필은 캐릭터만 표시 */}
+          {otherOccupiedSeats.map(seat => (
+            <div
+              key={`occupant-${seat.id}`}
+              style={{ position: "absolute", left: `${(seat.x / MAP_W) * 100}%`, top: `${(seat.y / MAP_H) * 100}%`, transform: "translate(-50%, calc(-100% + 5px))", zIndex: 24, pointerEvents: "none", filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.85))" }}
+            >
+              <SeatSprite charId={seat.characterId!} seatId={seat.id} size={52} />
+            </div>
+          ))}
 
           {/* Seated character */}
           {seatedSeat && (
