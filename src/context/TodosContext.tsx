@@ -7,14 +7,6 @@ export interface Todo {
   text: string;
 }
 
-const INITIAL: Todo[] = [
-  { id: 1, text: "구석기~청동기 개념 정리" },
-  { id: 2, text: "삼국시대 왕 계보 암기" },
-  { id: 3, text: "고려시대 오답 정리" },
-  { id: 4, text: "조선시대 사화 문제 풀기" },
-  { id: 5, text: "근현대 모의고사 1회" },
-];
-
 interface Ctx {
   todos: Todo[];
   add: (text: string) => void;
@@ -31,7 +23,7 @@ function toTodo(response: { todoId: number; content: string }): Todo {
 }
 
 export function TodosProvider({ children }: { children: ReactNode }) {
-  const [todos, setTodos] = useState<Todo[]>(INITIAL);
+  const [todos, setTodos] = useState<Todo[]>([]);
 
   async function loadTodos() {
     if (!tokenStore.get()) return;

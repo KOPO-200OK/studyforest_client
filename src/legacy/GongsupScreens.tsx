@@ -173,6 +173,8 @@ import { isJangwonWinner } from "@/data/jangwonWinners";
 import { CHARACTERS } from "@/data/characters";
 import { getDisabledSeatIds } from "@/data/seatConfig";
 import { useSidebar } from "@/context/SidebarContext";
+import { getWrongAnswers, createChatSession, sendChatMessage } from "@/api/questionApi";
+import { studyApi } from "@/api/studyApi";
 
 // 스프라이트 시트: 4열 × 2행 배치
 const SHEET_COLS = 4;
@@ -260,35 +262,13 @@ const TIME_META: Record<TimeOfDay, {
 
 interface Todo { id: number; text: string; }
 
-const TODOS: Todo[] = [
-  { id: 1, text: "구석기~청동기 개념 정리" },
-  { id: 2, text: "삼국시대 왕 계보 암기" },
-  { id: 3, text: "고려시대 오답 정리" },
-  { id: 4, text: "조선시대 사화 문제 풀기" },
-  { id: 5, text: "근현대 모의고사 1회" },
-];
-
-const ERA_SCORES = [
-  { era: "선사/고조선", score: 78 },
-  { era: "삼국/남북국", score: 62 },
-  { era: "고려", score: 44 },
-  { era: "조선", score: 71 },
-  { era: "근현대", score: 53 },
-];
-
-const WRONG_ANSWERS = [
-  { era: "고려", q: "무신정변의 원인", n: 4 },
-  { era: "조선", q: "4대 사화 순서", n: 2 },
-  { era: "삼국", q: "삼국 통일 과정", n: 2 },
-  { era: "근현대", q: "일제강점기 독립운동", n: 3 },
-];
-
-const ZONES = [
-  { id: 1, emoji: "🌲", name: "집중의 숲", sub: "1인 몰입 학습존", top: "8%", left: "4%" },
-  { id: 2, emoji: "🌸", name: "세계수 광장", sub: "휴식 · 커뮤니티", top: "8%", left: "54%" },
-  { id: 3, emoji: "💧", name: "계곡가 자유존", sub: "AI질문 · 오답정리", top: "56%", left: "4%" },
-  { id: 4, emoji: "📚", name: "집현전 공터", sub: "그룹스터디 · 출석", top: "56%", left: "54%" },
-];
+const ERA_LABEL: Record<string, string> = {
+  PREHISTORY: "선사·고조선",
+  THREE_KINGDOMS: "삼국·남북국",
+  GORYEO: "고려",
+  JOSEON: "조선",
+  MODERN: "근현대",
+};
 
 const ff = "'Noto Sans KR',sans-serif";
 const fs = "'Noto Serif KR',serif";
@@ -391,16 +371,41 @@ function TodoContent({ todos, remove, add }: { todos: Todo[]; remove: (id: numbe
 }
 
 function WrongContent() {
+  const navigate = useNavigate();
+  const [items, setItems] = useState<{ era: string; q: string; n: number }[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getWrongAnswers({ resolved: false, page: 0, size: 4 })
+      .then((page) => {
+        if (cancelled) return;
+        setItems(page.content.map((wa) => ({
+          era: ERA_LABEL[wa.question.periodCode] ?? wa.question.periodCode,
+          q: wa.question.questionPreview,
+          n: wa.wrongCount,
+        })));
+      })
+      .catch(() => { if (!cancelled) setItems([]); });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (items === null) {
+    return <div style={{ fontSize: 11, color: "#9a7040", fontFamily: ff }}>불러오는 중...</div>;
+  }
+
   return (
     <>
-      {WRONG_ANSWERS.map((wa, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 0", fontSize: 11, borderBottom: i < WRONG_ANSWERS.length - 1 ? "1px solid #e4cc88" : "none", fontFamily: ff }}>
+      {items.length === 0 && (
+        <div style={{ fontSize: 11, color: "#9a7040", fontFamily: ff, padding: "6px 0" }}>아직 틀린 문제가 없습니다</div>
+      )}
+      {items.map((wa, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 0", fontSize: 11, borderBottom: i < items.length - 1 ? "1px solid #e4cc88" : "none", fontFamily: ff }}>
           <span style={{ padding: "2px 6px", fontSize: 10, flexShrink: 0, background: "#f0e0c0", border: "1px solid #c4a060", color: "#5a3010", fontWeight: 700, boxShadow: "1px 1px 0 #9a7030" }}>{wa.era}</span>
           <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#2a1808" }}>{wa.q}</span>
           <span style={{ padding: "2px 7px", fontSize: 10, fontWeight: 700, flexShrink: 0, background: "linear-gradient(135deg,#c04040,#a02020)", color: "white", border: "1px solid #8a1818", boxShadow: "1px 1px 0 #4a0808" }}>{wa.n}회</span>
         </div>
       ))}
-      <button style={{ marginTop: 8, width: "100%", fontSize: 11, padding: "6px", background: "rgba(139,94,60,0.1)", border: "1px solid #c4a060", color: "#5a3010", cursor: "pointer", fontFamily: ff, fontWeight: 600 }}>
+      <button onClick={() => navigate("/question-bank/wrong-answers")} style={{ marginTop: 8, width: "100%", fontSize: 11, padding: "6px", background: "rgba(139,94,60,0.1)", border: "1px solid #c4a060", color: "#5a3010", cursor: "pointer", fontFamily: ff, fontWeight: 600 }}>
         오답노트 전체 보기 →
       </button>
     </>
@@ -408,10 +413,43 @@ function WrongContent() {
 }
 
 function WeakEraContent() {
+  const [eras, setEras] = useState<{ era: string; score: number }[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    studyApi.getWeaknessAnalysis()
+      .then((res) => {
+        if (cancelled) return;
+        const byEra = new Map<string, { correct: number; solved: number }>();
+        for (const item of res.items) {
+          const label = ERA_LABEL[item.era] ?? item.era;
+          const acc = byEra.get(label) ?? { correct: 0, solved: 0 };
+          acc.correct += item.correctCount;
+          acc.solved += item.solvedCount;
+          byEra.set(label, acc);
+        }
+        const scores = Array.from(byEra.entries())
+          .map(([era, { correct, solved }]) => ({ era, score: solved === 0 ? 0 : Math.round((correct / solved) * 100) }))
+          .sort((a, b) => a.score - b.score);
+        setEras(scores);
+      })
+      .catch(() => { if (!cancelled) setEras([]); });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (eras === null) {
+    return <div style={{ fontSize: 11, color: "#9a7040", fontFamily: ff }}>불러오는 중...</div>;
+  }
+
+  const weakest = eras[0];
+
   return (
     <>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {ERA_SCORES.map((e, i) => (
+        {eras.length === 0 && (
+          <div style={{ fontSize: 11, color: "#9a7040", fontFamily: ff }}>아직 풀이 기록이 없습니다</div>
+        )}
+        {eras.map((e, i) => (
           <div key={i}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontFamily: ff }}>
               <span style={{ fontSize: 11, color: "#2a1808" }}>{e.era}</span>
@@ -421,9 +459,11 @@ function WeakEraContent() {
           </div>
         ))}
       </div>
-      <div style={{ marginTop: 10, fontSize: 10, padding: "7px 9px", background: "rgba(192,64,64,0.09)", border: "1px solid #e0a8a8", color: "#8a2020", fontFamily: ff }}>
-        ⚠️ 고려시대 집중 학습이 필요합니다
-      </div>
+      {weakest && (
+        <div style={{ marginTop: 10, fontSize: 10, padding: "7px 9px", background: "rgba(192,64,64,0.09)", border: "1px solid #e0a8a8", color: "#8a2020", fontFamily: ff }}>
+          ⚠️ {weakest.era} 집중 학습이 필요합니다
+        </div>
+      )}
     </>
   );
 }
@@ -471,7 +511,6 @@ function Nav({ page, setPage }: { page: string; setPage: (p: string) => void }) 
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 10px", background: "rgba(139,94,60,0.22)", border: "1px solid #8b5e3c", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.07), 1px 1px 0 #3a2010" }}>
           <span style={{ fontSize: 16 }}>🧑‍🎓</span>
           <span style={{ fontSize: 13, color: "#f5e6c8", fontFamily: ff }}>역사왕123</span>
-          <span style={{ fontSize: 10, padding: "2px 6px", background: "#2c4a7c", color: "#a0c0f0", border: "1px solid #1e3060", fontWeight: 700 }}>Lv.7</span>
         </div>
       </div>
     </nav>
@@ -485,6 +524,34 @@ export function HomePage({ todos, remove, add, aiInput, setAiInput }: {
 }) {
   const navigate = useNavigate();
   const nickname = mockAuthApi.getCurrentAccount()?.nickname ?? "학습자";
+
+  const [aiSessionId, setAiSessionId] = useState<number | null>(null);
+  const [aiAnswer, setAiAnswer] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  async function handleAskAi() {
+    const question = aiInput.trim();
+    if (!question || aiLoading) return;
+    setAiLoading(true);
+    setAiError(null);
+    setAiAnswer(null);
+    try {
+      let sessionId = aiSessionId;
+      if (sessionId === null) {
+        const session = await createChatSession({});
+        sessionId = session.aiChatSessionId;
+        setAiSessionId(sessionId);
+      }
+      const { answer } = await sendChatMessage(sessionId, question);
+      setAiAnswer(answer);
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "AI 응답을 받아오지 못했습니다");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   return (
     <div style={{ flex: 1, minHeight: 0, position: "relative", overflow: "auto" }}>
       {/* Map as blurred hero background */}
@@ -506,7 +573,7 @@ export function HomePage({ todos, remove, add, aiInput, setAiInput }: {
                     {nickname}님, 오늘도 화이팅!
                   </div>
                   <div style={{ fontSize: 12, color: "#c8a060", fontFamily: ff, marginTop: 2 }}>
-                    한양생 Lv.7 · 오늘 공부시간 <strong style={{ color: "#f5c842" }}>2h 34m</strong>
+                    한양생 · 오늘 공부시간 <strong style={{ color: "#f5c842" }}>2h 34m</strong>
                   </div>
                 </div>
               </div>
@@ -515,7 +582,6 @@ export function HomePage({ todos, remove, add, aiInput, setAiInput }: {
               {[
                 { label: "오늘 학습", value: "2h 34m", color: "#f5c842" },
                 { label: "이번 주", value: "14h 22m", color: "#90d070" },
-                { label: "경험치", value: "2,840", color: "#a0c0f0" },
               ].map((s, i) => (
                 <div key={i} style={{ textAlign: "center", padding: "8px 16px", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(139,94,60,0.4)" }}>
                   <div style={{ fontSize: 16, fontWeight: 700, color: s.color, fontFamily: "monospace" }}>{s.value}</div>
@@ -550,10 +616,13 @@ export function HomePage({ todos, remove, add, aiInput, setAiInput }: {
           <Panel title="AI 질문하기" icon={<MessageCircle size={14} />} accent="#1a2a5a">
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <input value={aiInput} onChange={e => setAiInput(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") void handleAskAi(); }}
                 placeholder="한국사에 대해 무엇이든 질문하세요..."
+                disabled={aiLoading}
                 style={{ flex: 1, fontSize: 12, padding: "8px 12px", background: "rgba(240,220,160,0.45)", border: "1px solid #c4a060", outline: "none", color: "#2a1808", fontFamily: ff }} />
-              <button style={{ padding: "8px 16px", display: "flex", alignItems: "center", gap: 6, background: "linear-gradient(135deg,#2c4a7c,#1a2e60)", color: "#a0c0f0", border: "2px solid #1a2a50", boxShadow: "2px 2px 0 #0a1430", cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: ff }}>
-                <Send size={13} />질문하기
+              <button onClick={() => void handleAskAi()} disabled={aiLoading || !aiInput.trim()}
+                style={{ padding: "8px 16px", display: "flex", alignItems: "center", gap: 6, background: "linear-gradient(135deg,#2c4a7c,#1a2e60)", color: "#a0c0f0", border: "2px solid #1a2a50", boxShadow: "2px 2px 0 #0a1430", cursor: aiLoading ? "default" : "pointer", fontSize: 12, fontWeight: 700, fontFamily: ff, opacity: aiLoading || !aiInput.trim() ? 0.6 : 1 }}>
+                <Send size={13} />{aiLoading ? "답변 생성 중..." : "질문하기"}
               </button>
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
@@ -563,6 +632,14 @@ export function HomePage({ todos, remove, add, aiInput, setAiInput }: {
                 </button>
               ))}
             </div>
+            {aiError && (
+              <div style={{ marginTop: 10, fontSize: 11, color: "#f0a0a0", fontFamily: ff }}>{aiError}</div>
+            )}
+            {aiAnswer && (
+              <div style={{ marginTop: 10, fontSize: 12, lineHeight: 1.7, color: "#dce8f8", background: "rgba(44,74,124,0.15)", border: "1px solid #4a6a9a", padding: "10px 12px", fontFamily: ff, whiteSpace: "pre-wrap" }}>
+                🤖 {aiAnswer}
+              </div>
+            )}
           </Panel>
         </div>
 
@@ -1331,6 +1408,32 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
             >
               {/* 위쪽 "誠敬" 현판과 겹치지 않도록 라벨을 옆(오른쪽)에 배치 */}
               <div style={{ position: "absolute", top: "50%", left: "calc(100% + 6px)", transform: "translateY(-50%)", background: "#c04040", color: "#fff", fontSize: 9, fontWeight: 700, padding: "2px 7px", whiteSpace: "nowrap", border: "1px solid #7a1010", boxShadow: "1px 1px 0 #4a0808", animation: "noticeBlink 1.4s ease-in-out infinite" }}>
+                👆 클릭
+              </div>
+            </div>
+          )}
+
+          {/* 게시판 — 카페 메뉴판(칠판 3개), 클릭하면 공지사항 표시 (카페 맵에만 존재) */}
+          {mapId === "cafe" && (
+            <div
+              onClick={() => setShowNotice(true)}
+              title="클릭하여 공지사항 보기"
+              style={{ position: "absolute", left: `${(515 / MAP_W) * 100}%`, top: `${(52 / MAP_H) * 100}%`, transform: "translate(-50%, -50%)", zIndex: 22, width: 260, height: 50, cursor: "pointer" }}
+            >
+              <div style={{ position: "absolute", top: -22, left: "50%", transform: "translateX(-50%)", background: "#c04040", color: "#fff", fontSize: 9, fontWeight: 700, padding: "2px 7px", whiteSpace: "nowrap", border: "1px solid #7a1010", boxShadow: "1px 1px 0 #4a0808", animation: "noticeBlink 1.4s ease-in-out infinite" }}>
+                👆 클릭
+              </div>
+            </div>
+          )}
+
+          {/* 게시판 — 오피스 중앙 칠판(SALES OVERVIEW), 클릭하면 공지사항 표시 (오피스 맵에만 존재) */}
+          {mapId === "sa" && (
+            <div
+              onClick={() => setShowNotice(true)}
+              title="클릭하여 공지사항 보기"
+              style={{ position: "absolute", left: `${(553 / MAP_W) * 100}%`, top: `${(268 / MAP_H) * 100}%`, transform: "translate(-50%, -50%)", zIndex: 22, width: 150, height: 55, cursor: "pointer" }}
+            >
+              <div style={{ position: "absolute", top: -22, left: "50%", transform: "translateX(-50%)", background: "#c04040", color: "#fff", fontSize: 9, fontWeight: 700, padding: "2px 7px", whiteSpace: "nowrap", border: "1px solid #7a1010", boxShadow: "1px 1px 0 #4a0808", animation: "noticeBlink 1.4s ease-in-out infinite" }}>
                 👆 클릭
               </div>
             </div>
