@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CheckCircle2, Circle, MessageCircle, PenLine, BarChart2,
@@ -176,6 +176,8 @@ import { useSidebar } from "@/context/SidebarContext";
 import { ApiError } from "@/api/client";
 import { studySpaceApi, type StudyChannel, type StudyRoom } from "@/api/studySpaceApi";
 import { connectStudySpaceSocket, type SeatEvent } from "@/api/studySpaceSocket";
+import { voiceApi, type AvailableVoiceRoomResponse, type VoiceParticipantResponse } from "@/api/voiceApi";
+import { OfficeVoiceMeshClient } from "@/voice/OfficeVoiceMeshClient";
 
 // 스프라이트 시트: 4열 × 2행 배치
 const SHEET_COLS = 4;
@@ -847,8 +849,14 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   const [seatError, setSeatError] = useState<string | null>(null);
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [micOn, setMicOn] = useState(false);
-  const [zoneMembers, setZoneMembers] = useState<{ id: number; name: string; micOn: boolean; speaking: boolean }[]>([]);
+  const [voiceRoom, setVoiceRoom] = useState<AvailableVoiceRoomResponse | null>(null);
+  const [voiceConnected, setVoiceConnected] = useState(false);
+  const [voiceLoading, setVoiceLoading] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [zoneMembers, setZoneMembers] = useState<{ email: string; name: string; micOn: boolean; speaking: boolean }[]>([]);
   const [selfSpeaking, setSelfSpeaking] = useState(false);
+  const voiceClientRef = useRef<OfficeVoiceMeshClient | null>(null);
+  const remoteAudioRef = useRef<Record<string, HTMLAudioElement>>({});
 
   const currentMap = MAPS[mapId];
 
@@ -946,75 +954,6 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
     return () => clearInterval(id);
   }, [timerOn]);
 
-  const seatedZone = seats.find(seat => seat.id === seatedAt)?.zone ?? null;
-
-  useEffect(() => {
-    setZoneMembers([]);
-    if (mapId !== "sa" || !seatedZone) return;
-    const pool = ["옆자리민서", "동료찬호", "인턴하영", "대리지훈"].sort(() => Math.random() - 0.5);
-    const count = 1 + Math.floor(Math.random() * 2);
-    const timers = pool.slice(0, count).map((name, index) =>
-      window.setTimeout(() => {
-        setZoneMembers(current => [...current, {
-          id: Date.now() + index,
-          name,
-          micOn: Math.random() > 0.4,
-          speaking: false,
-        }]);
-      }, 900 + index * 1400),
-    );
-    return () => timers.forEach(window.clearTimeout);
-  }, [mapId, seatedZone]);
-
-  useEffect(() => {
-    if (zoneMembers.length === 0) return;
-    const id = window.setInterval(() => {
-      setZoneMembers(current => current.map(member => ({
-        ...member,
-        speaking: member.micOn && Math.random() < 0.35,
-      })));
-    }, 1400);
-    return () => window.clearInterval(id);
-  }, [zoneMembers.length]);
-
-  useEffect(() => {
-    if (!micOn || !seatedAt) {
-      setSelfSpeaking(false);
-      return;
-    }
-    let cancelled = false;
-    let animationFrame = 0;
-    let audioContext: AudioContext | null = null;
-    let stream: MediaStream | null = null;
-
-    navigator.mediaDevices?.getUserMedia({ audio: true }).then(mediaStream => {
-      if (cancelled) {
-        mediaStream.getTracks().forEach(track => track.stop());
-        return;
-      }
-      stream = mediaStream;
-      audioContext = new AudioContext();
-      const source = audioContext.createMediaStreamSource(mediaStream);
-      const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 512;
-      source.connect(analyser);
-      const data = new Uint8Array(analyser.frequencyBinCount);
-      const tick = () => {
-        analyser.getByteFrequencyData(data);
-        setSelfSpeaking(data.reduce((sum, value) => sum + value, 0) / data.length > 12);
-        animationFrame = requestAnimationFrame(tick);
-      };
-      tick();
-    }).catch(() => setSelfSpeaking(false));
-
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(animationFrame);
-      stream?.getTracks().forEach(track => track.stop());
-      void audioContext?.close();
-    };
-  }, [micOn, seatedAt]);
-
   useEffect(() => {
     if (studySessionId === null || realtimeConnected) return;
     const sendHeartbeat = () => {
@@ -1045,6 +984,147 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   const otherOccupiedSeats = seats.filter(
     seat => seat.status === "occupied" && seat.id !== seatedAt && seat.characterId !== undefined,
   );
+
+  async function refreshVoiceRoom() {
+    if (mapId !== "sa" || seatedAt === null) {
+      setVoiceRoom(null);
+      return;
+    }
+
+    try {
+      const room = await voiceApi.getMyRoom();
+      setVoiceRoom(room);
+      setVoiceError(null);
+    } catch (error) {
+      setVoiceRoom(null);
+      setVoiceError(error instanceof Error ? error.message : "음성방 정보를 불러오지 못했습니다.");
+    }
+  }
+
+  async function handleJoinVoice() {
+    if (!voiceRoom || voiceConnected || voiceLoading) return;
+
+    const selfEmail = mockAuthApi.getCurrentEmail();
+
+    if (!selfEmail) {
+      setVoiceError("로그인이 필요합니다.");
+      return;
+    }
+
+    setVoiceLoading(true);
+    setVoiceError(null);
+
+    const client = new OfficeVoiceMeshClient({
+      studyZoneId: voiceRoom.studyZoneId,
+      selfEmail,
+      onRemoteStream: (email, stream) => {
+        let audio = remoteAudioRef.current[email];
+
+        if (!audio) {
+          audio = new Audio();
+          audio.autoplay = true;
+          remoteAudioRef.current[email] = audio;
+        }
+
+        audio.srcObject = stream;
+      },
+      onParticipantJoined: (participant: VoiceParticipantResponse) => {
+        setZoneMembers(current => {
+          if (current.some(member => member.email === participant.email)) return current;
+
+          return [
+            ...current,
+            { email: participant.email, name: participant.name, micOn: true, speaking: false },
+          ];
+        });
+      },
+      onParticipantLeft: email => {
+        setZoneMembers(current => current.filter(member => member.email !== email));
+
+        const audio = remoteAudioRef.current[email];
+        if (audio) {
+          audio.pause();
+          audio.srcObject = null;
+          delete remoteAudioRef.current[email];
+        }
+      },
+      onError: message => setVoiceError(message),
+    });
+
+    try {
+      await client.start();
+
+      const participants = await voiceApi.getParticipants(voiceRoom.studyZoneId);
+      setZoneMembers(
+        participants
+          .filter(participant => participant.email !== selfEmail)
+          .map(participant => ({
+            email: participant.email,
+            name: participant.name,
+            micOn: true,
+            speaking: false,
+          })),
+      );
+
+      voiceClientRef.current = client;
+      setVoiceConnected(true);
+      setMicOn(true);
+      setSelfSpeaking(false);
+    } catch (error) {
+      await client.stop().catch(() => undefined);
+      setVoiceError(error instanceof Error ? error.message : "음성채팅 입장에 실패했습니다.");
+    } finally {
+      setVoiceLoading(false);
+    }
+  }
+
+  async function stopVoiceRoom() {
+    const client = voiceClientRef.current;
+    voiceClientRef.current = null;
+
+    if (client) {
+      await client.stop().catch(() => undefined);
+    }
+
+    Object.values(remoteAudioRef.current).forEach(audio => {
+      audio.pause();
+      audio.srcObject = null;
+    });
+
+    remoteAudioRef.current = {};
+    setVoiceConnected(false);
+    setMicOn(false);
+    setSelfSpeaking(false);
+    setZoneMembers([]);
+  }
+
+  function handleToggleVoiceMic() {
+    if (!voiceConnected) {
+      void handleJoinVoice();
+      return;
+    }
+
+    const nextMicOn = !micOn;
+    voiceClientRef.current?.setMuted(!nextMicOn);
+    setMicOn(nextMicOn);
+    setSelfSpeaking(false);
+  }
+
+  useEffect(() => {
+    if (mapId !== "sa" || seatedAt === null) {
+      void stopVoiceRoom();
+      setVoiceRoom(null);
+      return;
+    }
+
+    void refreshVoiceRoom();
+  }, [mapId, seatedAt]);
+
+  useEffect(() => {
+    return () => {
+      void stopVoiceRoom();
+    };
+  }, []);
 
   const handleSeatClick = (id: number) => setSelectedId(prev => prev === id ? null : id);
 
@@ -1078,6 +1158,7 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
     setSeatActionLoading(true);
     setSeatError(null);
     try {
+      await stopVoiceRoom();
       await studySpaceApi.leaveSeat(studySessionId);
       setSeats(ss => ss.map(s => s.id === seatedAt ? { ...s, status: "available", characterId: undefined } : s));
       setSeatedAt(null);
@@ -1406,12 +1487,13 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
           {mapId === "sa" && seatedSeat && (
             <div style={{ position: "absolute", bottom: 12, right: 12, zIndex: 30, display: "flex", alignItems: "center", gap: 8 }}>
               <button
-                onClick={() => setMicOn(current => !current)}
-                title={micOn ? "마이크 끄기" : "마이크 켜기"}
+                onClick={handleToggleVoiceMic}
+                disabled={voiceLoading || !voiceRoom}
+                title={!voiceRoom ? "이 좌석에서는 음성방을 사용할 수 없습니다" : micOn ? "마이크 끄기" : "음성채팅 입장/마이크 켜기"}
                 style={{
                   width: 40, height: 40, borderRadius: "50%",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  cursor: "pointer", transition: "all 0.15s", color: "#fff",
+                  cursor: voiceLoading || !voiceRoom ? "not-allowed" : "pointer", transition: "all 0.15s", color: "#fff",
                   background: micOn ? "rgba(59,165,92,0.95)" : "rgba(237,66,69,0.95)",
                   border: `2px solid ${micOn ? "#2d7d46" : "#a12d2f"}`,
                   boxShadow: selfSpeaking ? "0 0 0 4px rgba(59,165,92,0.45), 2px 2px 0 rgba(0,0,0,0.4)" : "2px 2px 0 rgba(0,0,0,0.4)",
@@ -1424,7 +1506,13 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
                 background: "rgba(16,8,2,0.78)", color: micOn ? "#8ee0a8" : "#f0a0a0",
                 border: `1px solid ${micOn ? "#2d7d46" : "#a12d2f"}`,
               }}>
-                {micOn ? "🎤 마이크 켜짐" : "🔇 마이크 꺼짐"}
+                {!voiceRoom
+                  ? "음성방 없음"
+                  : voiceLoading
+                    ? "연결 중..."
+                    : voiceConnected
+                      ? micOn ? "🎤 마이크 켜짐" : "🔇 마이크 꺼짐"
+                      : "🔊 음성 입장"}
               </span>
             </div>
           )}
@@ -1436,13 +1524,29 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
               boxShadow: "2px 2px 0 rgba(0,0,0,0.4)", padding: "6px 8px",
             }}>
               <div style={{ fontSize: 9, fontWeight: 700, fontFamily: ff, color: "#c8a060", letterSpacing: "0.04em", marginBottom: 5 }}>
-                🔊 {seatedSeat.zone}
+                🔊 {voiceRoom?.zoneName ?? seatedSeat.zone}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <ZoneVoiceRow name={`${nickname} (나)`} micOn={micOn} speaking={micOn && selfSpeaking} />
-                {zoneMembers.map(member => (
-                  <ZoneVoiceRow key={member.id} name={member.name} micOn={member.micOn} speaking={member.speaking} />
-                ))}
+                {!voiceConnected && (
+                  <div style={{ fontSize: 10, fontFamily: ff, color: "#e8d8b8" }}>
+                    마이크 버튼을 누르면 입장합니다
+                  </div>
+                )}
+
+                {voiceConnected && (
+                  <>
+                    <ZoneVoiceRow name={`${nickname} (나)`} micOn={micOn} speaking={micOn && selfSpeaking} />
+                    {zoneMembers.map(member => (
+                      <ZoneVoiceRow key={member.email} name={member.name} micOn={member.micOn} speaking={member.speaking} />
+                    ))}
+                  </>
+                )}
+
+                {voiceError && (
+                  <div style={{ fontSize: 9, fontFamily: ff, color: "#ff9a9a", marginTop: 4 }}>
+                    {voiceError}
+                  </div>
+                )}
               </div>
             </div>
           )}
