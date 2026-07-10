@@ -28,6 +28,10 @@ interface OfficeVoiceMeshClientOptions {
   onError?: (message: string) => void;
 }
 
+function getBrokerUrl(): string {
+  return import.meta.env.VITE_WS_BASE_URL ?? "ws://localhost:8080/ws-studyspace";
+}
+
 export class OfficeVoiceMeshClient {
   private readonly studyZoneId: number;
   private readonly selfEmail: string;
@@ -49,7 +53,7 @@ export class OfficeVoiceMeshClient {
     this.onError = options.onError;
   }
 
-  async start() {
+  async start(): Promise<void> {
     this.localStream = await navigator.mediaDevices.getUserMedia({
       audio: true,
       video: false,
@@ -65,11 +69,11 @@ export class OfficeVoiceMeshClient {
     }
   }
 
-  async stop() {
+  async stop(): Promise<void> {
     try {
       await voiceApi.leave(this.studyZoneId);
     } catch {
-      // ignore
+      // 이미 퇴장 처리되었거나 네트워크가 끊긴 경우 무시
     }
 
     for (const peer of this.peers.values()) {
@@ -89,7 +93,7 @@ export class OfficeVoiceMeshClient {
     }
   }
 
-  setMuted(muted: boolean) {
+  setMuted(muted: boolean): void {
     if (!this.localStream) return;
 
     this.localStream.getAudioTracks().forEach((track) => {
@@ -97,16 +101,14 @@ export class OfficeVoiceMeshClient {
     });
   }
 
-  private async connectStomp() {
+  private async connectStomp(): Promise<void> {
     const token = tokenStore.get();
 
     if (!token) {
       throw new Error("로그인이 필요합니다");
     }
 
-    const wsUrl =
-      import.meta.env.VITE_WS_BASE_URL ??
-      "ws://localhost:8080/ws-studyspace";
+    const wsUrl = getBrokerUrl();
 
     this.stomp = new Client({
       brokerURL: wsUrl,
@@ -127,14 +129,14 @@ export class OfficeVoiceMeshClient {
         );
       },
       onStompError: () => {
-        this.onError?.("음성채팅 WebSocket 연결 중 오류가 발생했습니다");
+        this.onError?.("음성채팅 WebSocket 연결 중 오류가 발생했습니다.");
       },
       onWebSocketClose: () => {
-        this.onError?.("음성채팅 연결이 종료되었습니다");
+        this.onError?.("음성채팅 WebSocket 연결이 종료되었습니다.");
       },
     });
 
-    await this.stomp.activate();
+    this.stomp.activate();
 
     await new Promise<void>((resolve, reject) => {
       const startedAt = Date.now();
@@ -148,13 +150,13 @@ export class OfficeVoiceMeshClient {
 
         if (Date.now() - startedAt > 5000) {
           window.clearInterval(timer);
-          reject(new Error("음성채팅 WebSocket 연결에 실패했습니다"));
+          reject(new Error("음성채팅 WebSocket 연결에 실패했습니다."));
         }
       }, 100);
     });
   }
 
-  private async handleParticipantEvent(message: IMessage) {
+  private async handleParticipantEvent(message: IMessage): Promise<void> {
     const event = JSON.parse(message.body) as VoiceParticipantEvent;
 
     if (event.email === this.selfEmail) {
@@ -175,10 +177,14 @@ export class OfficeVoiceMeshClient {
     }
   }
 
-  private async handleSignal(message: IMessage) {
+  private async handleSignal(message: IMessage): Promise<void> {
     const signal = JSON.parse(message.body) as VoiceSignalMessage;
 
     if (!signal.senderEmail || signal.senderEmail === this.selfEmail) {
+      return;
+    }
+
+    if (signal.studyZoneId !== this.studyZoneId) {
       return;
     }
 
@@ -210,7 +216,7 @@ export class OfficeVoiceMeshClient {
     }
   }
 
-  private async createOffer(targetEmail: string) {
+  private async createOffer(targetEmail: string): Promise<void> {
     const peer = this.getOrCreatePeer(targetEmail);
 
     const offer = await peer.createOffer();
@@ -219,13 +225,15 @@ export class OfficeVoiceMeshClient {
     this.sendSignal("OFFER", targetEmail, offer);
   }
 
-  private getOrCreatePeer(targetEmail: string) {
+  private getOrCreatePeer(targetEmail: string): RTCPeerConnection {
     const existing = this.peers.get(targetEmail);
     if (existing) return existing;
 
     const peer = new RTCPeerConnection({
       iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
+        {
+          urls: "stun:stun.l.google.com:19302",
+        },
       ],
     });
 
@@ -242,6 +250,7 @@ export class OfficeVoiceMeshClient {
 
     peer.ontrack = (event) => {
       const [stream] = event.streams;
+
       if (stream) {
         this.onRemoteStream?.(targetEmail, stream);
       }
@@ -261,9 +270,13 @@ export class OfficeVoiceMeshClient {
     return peer;
   }
 
-  private sendSignal(type: VoiceSignalType, targetEmail: string, payload: unknown) {
+  private sendSignal(
+    type: VoiceSignalType,
+    targetEmail: string,
+    payload: unknown,
+  ): void {
     if (!this.stomp?.connected) {
-      this.onError?.("음성채팅 WebSocket이 연결되어 있지 않습니다");
+      this.onError?.("음성채팅 WebSocket이 연결되어 있지 않습니다.");
       return;
     }
 
@@ -280,7 +293,7 @@ export class OfficeVoiceMeshClient {
     });
   }
 
-  private closePeer(email: string) {
+  private closePeer(email: string): void {
     const peer = this.peers.get(email);
     if (!peer) return;
 
