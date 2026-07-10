@@ -162,6 +162,9 @@ import { isJangwonWinner } from "@/data/jangwonWinners";
 import { CHARACTERS } from "@/data/characters";
 import { getDisabledSeatIds } from "@/data/seatConfig";
 import { useSidebar } from "@/context/SidebarContext";
+import { ApiError } from "@/api/client";
+import { studySpaceApi, type StudyChannel, type StudyRoom } from "@/api/studySpaceApi";
+import { connectStudySpaceSocket, type SeatEvent } from "@/api/studySpaceSocket";
 
 // 스프라이트 시트: 4열 × 2행 배치
 const SHEET_COLS = 4;
@@ -187,7 +190,6 @@ function SeatSprite({ charId, seatId, size = 56 }: {
 }) {
   const cutouts = CUTOUT_SPRITES[charId];
   if (cutouts) {
-    // 해당 방향 이미지가 없는 캐릭터는 정면(5번)으로 대체
     const cutoutSrc = cutouts[getSeatDirection(seatId)] ?? cutouts[5];
     if (cutoutSrc) {
       return <img src={cutoutSrc} alt="" style={{ height: CUTOUT_HEIGHT, width: "auto", display: "block" }} />;
@@ -575,7 +577,7 @@ export function HomePage({ todos, remove, add, aiInput, setAiInput }: {
 
 /* ── Seat system ──────────────────────────────────────────────── */
 type SeatStatus = "available" | "selected" | "occupied" | "disabled";
-interface Seat { id: number; x: number; y: number; zone: string; status: SeatStatus; }
+interface Seat { id: number; serverId?: number; characterId?: number; x: number; y: number; zone: string; status: SeatStatus; }
 
 const MAP_W = 1022;
 const MAP_H = 620;
@@ -746,6 +748,20 @@ const SEAT_STYLE: Record<SeatStatus, { bg: string; border: string; text: string;
   disabled:  { bg: "rgba(202, 0, 0, 0.65)",   border: "#222222", text: "#686868",  glow: "none" },
 };
 
+function getSeatErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    const messages: Record<string, string> = {
+      SEAT_ALREADY_OCCUPIED: "방금 다른 사용자가 선택한 좌석입니다.",
+      MEMBER_ALREADY_SEATED: "이미 이용 중인 좌석이 있습니다.",
+      SEAT_NOT_IN_CHANNEL_ROOM: "현재 채널에서 선택할 수 없는 좌석입니다.",
+      SEAT_NOT_FOUND: "이용 가능한 좌석을 찾을 수 없습니다.",
+      ACTIVE_OCCUPANCY_NOT_FOUND: "현재 이용 중인 좌석 정보가 없습니다.",
+    };
+    return messages[error.code] ?? error.message;
+  }
+  return error instanceof Error ? error.message : "좌석 정보를 처리하지 못했습니다.";
+}
+
 function SeatMarker({ seat, isSelected, onClick }: { seat: Seat; isSelected: boolean; onClick: (id: number) => void }) {
   const status = isSelected ? "selected" : seat.status;
   const s = SEAT_STYLE[status];
@@ -778,7 +794,6 @@ function SeatMarker({ seat, isSelected, onClick }: { seat: Seat; isSelected: boo
   );
 }
 
-/* ── 음성채팅 참여자 한 줄 (이름 + 마이크 상태 + 발화 표시등) ────── */
 function ZoneVoiceRow({ name, micOn, speaking }: { name: string; micOn: boolean; speaking: boolean }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -804,7 +819,9 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   const nickname = mockAuthApi.getCurrentAccount()?.nickname ?? "학습자";
   const { collapsed: sidebarCollapsed } = useSidebar();
   const [mapId, setMapId] = useState<MapId>("forest");
-  const [channel, setChannel] = useState(1);
+  const [rooms, setRooms] = useState<StudyRoom[]>([]);
+  const [channels, setChannels] = useState<StudyChannel[]>([]);
+  const [channel, setChannel] = useState<StudyChannel | null>(null);
   const [seats, setSeats] = useState<Seat[]>(() => makeSeats(MAPS.forest.seats));
   const [showSeats, setShowSeats] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -813,18 +830,98 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   const [showCharSelect, setShowCharSelect] = useState(false);
   const [showNotice, setShowNotice] = useState(false);
   const [todoOpen, setTodoOpen] = useState(true);
-  const [micOn, setMicOn] = useState(false); // 오피스 맵 음성채팅 마이크 on/off (디스코드 스타일)
+  const [studySessionId, setStudySessionId] = useState<number | null>(null);
+  const [seatLoading, setSeatLoading] = useState(false);
+  const [seatActionLoading, setSeatActionLoading] = useState(false);
+  const [seatError, setSeatError] = useState<string | null>(null);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
+  const [micOn, setMicOn] = useState(false);
+  const [zoneMembers, setZoneMembers] = useState<{ id: number; name: string; micOn: boolean; speaking: boolean }[]>([]);
+  const [selfSpeaking, setSelfSpeaking] = useState(false);
 
   const currentMap = MAPS[mapId];
 
+  const mapNoById: Record<MapId, number> = { forest: 1, seodang: 2, cafe: 3, sa: 4 };
+
+  useEffect(() => {
+    studySpaceApi.getRooms()
+      .then(setRooms)
+      .catch(error => setSeatError(getSeatErrorMessage(error)));
+  }, []);
+
+  useEffect(() => {
+    const room = rooms.find(item => item.mapNo === mapNoById[mapId]);
+    if (!room) return;
+    setSeatLoading(true);
+    setSeatError(null);
+    studySpaceApi.getChannels(room.studyRoomId)
+      .then(items => {
+        setChannels(items);
+        setChannel(items[0] ?? null);
+      })
+      .catch(error => setSeatError(getSeatErrorMessage(error)))
+      .finally(() => setSeatLoading(false));
+  }, [rooms, mapId]);
+
+  useEffect(() => {
+    if (!channel) return;
+    let cancelled = false;
+    setSeatLoading(true);
+    setSeatError(null);
+    studySpaceApi.getSeats(channel.studyChannelId)
+      .then(statuses => {
+        if (cancelled) return;
+        const statusBySeatNo = new Map(statuses.map(status => [status.seatNo, status]));
+        setSeats(MAPS[mapId].seats.map(config => {
+          const serverSeat = statusBySeatNo.get(config.id);
+          return {
+            ...config,
+            serverId: serverSeat?.seatId,
+            characterId: serverSeat?.characterId ?? undefined,
+            status: !serverSeat || !serverSeat.active ? "disabled"
+              : serverSeat.occupied ? "occupied"
+              : "available",
+          };
+        }));
+      })
+      .catch(error => !cancelled && setSeatError(getSeatErrorMessage(error)))
+      .finally(() => !cancelled && setSeatLoading(false));
+    return () => { cancelled = true; };
+  }, [channel, mapId]);
+
+  useEffect(() => {
+    if (!channel) return;
+    return connectStudySpaceSocket({
+      channelId: channel.studyChannelId,
+      studySessionId,
+      onSeatEvent: event => applySeatEvent(event),
+      onSessionTick: tick => setTimerSecs(tick.displayElapsedSeconds),
+      onConnectionChange: connected => {
+        setRealtimeConnected(connected);
+        if (connected) setSeatError(null);
+      },
+      onError: message => setSeatError(message),
+    });
+  }, [channel, studySessionId]);
+
+  function applySeatEvent(event: SeatEvent) {
+    setSeats(current => current.map(seat => {
+      if (seat.serverId !== event.seatId) return seat;
+      if (event.type === "VACATED") return { ...seat, status: "available", characterId: undefined };
+      if (event.type === "DISABLED") return { ...seat, status: "disabled", characterId: undefined };
+      return { ...seat, status: "occupied", characterId: event.characterId ?? seat.characterId };
+    }));
+    if (event.type === "VACATED") {
+      setSelectedId(current => current === event.seatNo ? null : current);
+    }
+  }
+
   function handleSelectMap(id: MapId) {
-    if (id === mapId) return;
+    if (id === mapId || studySessionId !== null) return;
     setMapId(id);
     setSeats(makeSeats(MAPS[id].seats));
-    setSeatedAt(null);
     setSelectedId(null);
     setShowSeats(false);
-    setTimerOn(false);
     setMicOn(false);
   }
 
@@ -838,77 +935,92 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
     return () => clearInterval(id);
   }, [timerOn]);
 
+  const seatedZone = seats.find(seat => seat.id === seatedAt)?.zone ?? null;
+
+  useEffect(() => {
+    setZoneMembers([]);
+    if (mapId !== "sa" || !seatedZone) return;
+    const pool = ["옆자리민서", "동료찬호", "인턴하영", "대리지훈"].sort(() => Math.random() - 0.5);
+    const count = 1 + Math.floor(Math.random() * 2);
+    const timers = pool.slice(0, count).map((name, index) =>
+      window.setTimeout(() => {
+        setZoneMembers(current => [...current, {
+          id: Date.now() + index,
+          name,
+          micOn: Math.random() > 0.4,
+          speaking: false,
+        }]);
+      }, 900 + index * 1400),
+    );
+    return () => timers.forEach(window.clearTimeout);
+  }, [mapId, seatedZone]);
+
+  useEffect(() => {
+    if (zoneMembers.length === 0) return;
+    const id = window.setInterval(() => {
+      setZoneMembers(current => current.map(member => ({
+        ...member,
+        speaking: member.micOn && Math.random() < 0.35,
+      })));
+    }, 1400);
+    return () => window.clearInterval(id);
+  }, [zoneMembers.length]);
+
+  useEffect(() => {
+    if (!micOn || !seatedAt) {
+      setSelfSpeaking(false);
+      return;
+    }
+    let cancelled = false;
+    let animationFrame = 0;
+    let audioContext: AudioContext | null = null;
+    let stream: MediaStream | null = null;
+
+    navigator.mediaDevices?.getUserMedia({ audio: true }).then(mediaStream => {
+      if (cancelled) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        return;
+      }
+      stream = mediaStream;
+      audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(mediaStream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        analyser.getByteFrequencyData(data);
+        setSelfSpeaking(data.reduce((sum, value) => sum + value, 0) / data.length > 12);
+        animationFrame = requestAnimationFrame(tick);
+      };
+      tick();
+    }).catch(() => setSelfSpeaking(false));
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(animationFrame);
+      stream?.getTracks().forEach(track => track.stop());
+      void audioContext?.close();
+    };
+  }, [micOn, seatedAt]);
+
+  useEffect(() => {
+    if (studySessionId === null || realtimeConnected) return;
+    const sendHeartbeat = () => {
+      studySpaceApi.heartbeat(studySessionId)
+        .then(tick => setTimerSecs(tick.displayElapsedSeconds))
+        .catch(error => setSeatError(getSeatErrorMessage(error)));
+    };
+    const id = window.setInterval(sendHeartbeat, 30_000);
+    return () => window.clearInterval(id);
+  }, [studySessionId, realtimeConnected]);
+
   const fmtTimer = (s: number) => {
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
     const sec = s % 60;
     return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
   };
-  // ────────────────────────────────────────────────────────────────
-
-  // ── 음성채팅 — 같은 구역(zone) 참여자 (오피스 맵, 착석 중에만) ──────
-  const [zoneMembers, setZoneMembers] = useState<{ id: number; name: string; micOn: boolean; speaking: boolean }[]>([]);
-  const [selfSpeaking, setSelfSpeaking] = useState(false);
-  const seatedZone = seats.find(s => s.id === seatedAt)?.zone ?? null;
-
-  // 같은 구역에 있는 동료들 — 착석하면 잠시 후 하나둘 입장하는 것처럼 연출
-  useEffect(() => {
-    setZoneMembers([]);
-    if (mapId !== "sa" || !seatedZone) return;
-    const pool = ["옆자리민서", "동료찬호", "인턴하영", "대리지훈"].sort(() => Math.random() - 0.5);
-    const count = 1 + Math.floor(Math.random() * 2); // 1~2명 입장
-    const timers = pool.slice(0, count).map((name, i) =>
-      setTimeout(() => {
-        setZoneMembers(prev => [...prev, { id: Date.now() + i, name, micOn: Math.random() > 0.4, speaking: false }]);
-      }, 900 + i * 1400)
-    );
-    return () => timers.forEach(clearTimeout);
-  }, [mapId, seatedZone]);
-
-  // 동료들의 발화 상태 — 마이크 켠 사람 중 무작위로 말풍선(불빛) 연출
-  useEffect(() => {
-    if (zoneMembers.length === 0) return;
-    const id = setInterval(() => {
-      setZoneMembers(prev => prev.map(m => ({ ...m, speaking: m.micOn && Math.random() < 0.35 })));
-    }, 1400);
-    return () => clearInterval(id);
-  }, [zoneMembers.length]);
-
-  // 내 마이크 — 실제 브라우저 마이크 입력 볼륨을 감지해 말할 때 불이 들어오게 함
-  useEffect(() => {
-    if (!micOn || !seatedAt) { setSelfSpeaking(false); return; }
-    let cancelled = false;
-    let raf = 0;
-    let audioCtx: AudioContext | null = null;
-    let stream: MediaStream | null = null;
-
-    navigator.mediaDevices?.getUserMedia({ audio: true }).then(s => {
-      if (cancelled) { s.getTracks().forEach(t => t.stop()); return; }
-      stream = s;
-      audioCtx = new AudioContext();
-      const source = audioCtx.createMediaStreamSource(s);
-      const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 512;
-      source.connect(analyser);
-      const data = new Uint8Array(analyser.frequencyBinCount);
-      const tick = () => {
-        analyser.getByteFrequencyData(data);
-        const avg = data.reduce((a, b) => a + b, 0) / data.length;
-        setSelfSpeaking(avg > 12);
-        raf = requestAnimationFrame(tick);
-      };
-      tick();
-    }).catch(() => {
-      // 마이크 권한이 없으면 조용히 무시 (버튼은 켜진 상태로 두되 불빛만 안 들어옴)
-    });
-
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(raf);
-      stream?.getTracks().forEach(t => t.stop());
-      void audioCtx?.close();
-    };
-  }, [micOn, seatedAt]);
   // ────────────────────────────────────────────────────────────────
 
   const timeMeta = TIME_META[timeOfDay];
@@ -919,24 +1031,53 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
 
   const selectedSeat = seats.find(s => s.id === selectedId) ?? null;
   const seatedSeat   = seats.find(s => s.id === seatedAt)   ?? null;
+  const otherOccupiedSeats = seats.filter(
+    seat => seat.status === "occupied" && seat.id !== seatedAt && seat.characterId !== undefined,
+  );
 
   const handleSeatClick = (id: number) => setSelectedId(prev => prev === id ? null : id);
 
-  const handleSit = () => {
-    if (selectedId === null) return;
-    setSeats(ss => ss.map(s => s.id === selectedId ? { ...s, status: "occupied" } : s));
-    setSeatedAt(selectedId);
-    setShowSeats(false);
-    setSelectedId(null);
-    setTimerOn(true); // 착석 시 타이머 자동 시작
+  const handleSit = async () => {
+    if (!selectedSeat?.serverId || !channel) return;
+    setSeatActionLoading(true);
+    setSeatError(null);
+    try {
+      const session = await studySpaceApi.occupySeat(channel.studyChannelId, selectedSeat.serverId);
+      setSeats(ss => ss.map(s => s.id === selectedSeat.id ? { ...s, status: "occupied", characterId: char } : s));
+      setSeatedAt(selectedSeat.id);
+      setStudySessionId(session.studySessionId);
+      setTimerSecs(session.accumulatedSeconds);
+      setShowSeats(false);
+      setSelectedId(null);
+      setTimerOn(true);
+    } catch (error) {
+      setSeatError(getSeatErrorMessage(error));
+      const statuses = await studySpaceApi.getSeats(channel.studyChannelId).catch(() => null);
+      if (statuses) {
+        const occupiedIds = new Set(statuses.filter(s => s.occupied).map(s => s.seatId));
+        setSeats(ss => ss.map(s => ({ ...s, status: s.serverId && occupiedIds.has(s.serverId) ? "occupied" : s.status })));
+      }
+    } finally {
+      setSeatActionLoading(false);
+    }
   };
 
-  const handleLeave = () => {
-    if (seatedAt === null) return;
-    setSeats(ss => ss.map(s => s.id === seatedAt ? { ...s, status: "available" } : s));
-    setSeatedAt(null);
-    setTimerOn(false); // 퇴장 시 타이머 정지
-    setMicOn(false); // 퇴장 시 마이크도 자동 off
+  const handleLeave = async () => {
+    if (seatedAt === null || studySessionId === null) return;
+    setSeatActionLoading(true);
+    setSeatError(null);
+    try {
+      await studySpaceApi.leaveSeat(studySessionId);
+      setSeats(ss => ss.map(s => s.id === seatedAt ? { ...s, status: "available", characterId: undefined } : s));
+      setSeatedAt(null);
+      setStudySessionId(null);
+      setTimerOn(false);
+      setMicOn(false);
+    } catch (error) {
+      setSeatError(getSeatErrorMessage(error));
+    } finally {
+      setSeatActionLoading(false);
+    }
   };
 
   const ZONE_COLORS: Record<string, string> = {
@@ -976,8 +1117,8 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
         <Panel title="맵 · 채널" icon={<span style={{ fontSize: 13 }}>🗺️</span>} accent="linear-gradient(90deg,#162e12,#1e3e18)">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 6, marginBottom: 8 }}>
             {Object.values(MAPS).map(m => (
-              <button key={m.id} onClick={() => handleSelectMap(m.id)}
-                style={{ padding: "6px 4px", fontSize: 11, fontWeight: 700, fontFamily: ff, cursor: "pointer",
+              <button key={m.id} disabled={studySessionId !== null} onClick={() => handleSelectMap(m.id)}
+                style={{ padding: "6px 4px", fontSize: 11, fontWeight: 700, fontFamily: ff, cursor: studySessionId !== null ? "not-allowed" : "pointer",
                   background: mapId === m.id ? "linear-gradient(135deg,#3a6030,#1e4018)" : "rgba(139,94,60,0.12)",
                   color: mapId === m.id ? "#c0f0a0" : "#9a7040",
                   border: `2px solid ${mapId === m.id ? "#1a3010" : "#5a4020"}` }}>
@@ -986,15 +1127,20 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
             ))}
           </div>
           <div style={{ display: "flex", gap: 6 }}>
-            {[1, 2, 3].map(ch => (
-              <button key={ch} onClick={() => setChannel(ch)}
-                style={{ flex: 1, padding: "5px 4px", fontSize: 11, fontWeight: 700, fontFamily: ff, cursor: "pointer",
-                  background: channel === ch ? "rgba(200,160,48,0.25)" : "rgba(139,94,60,0.08)",
-                  color: channel === ch ? "#f5c842" : "#7a5828",
-                  border: `1px solid ${channel === ch ? "#c8a030" : "#5a4020"}` }}>
-                {ch}채널
+            {channels.map(ch => (
+              <button key={ch.studyChannelId} disabled={studySessionId !== null} onClick={() => setChannel(ch)}
+                style={{ flex: 1, padding: "5px 4px", fontSize: 11, fontWeight: 700, fontFamily: ff, cursor: studySessionId !== null ? "not-allowed" : "pointer",
+                  background: channel?.studyChannelId === ch.studyChannelId ? "rgba(200,160,48,0.25)" : "rgba(139,94,60,0.08)",
+                  color: channel?.studyChannelId === ch.studyChannelId ? "#f5c842" : "#7a5828",
+                  border: `1px solid ${channel?.studyChannelId === ch.studyChannelId ? "#c8a030" : "#5a4020"}` }}>
+                {ch.channelNo}채널
               </button>
             ))}
+          </div>
+          {seatLoading && <div style={{ marginTop: 7, fontSize: 10, color: "#7a5828", fontFamily: ff }}>좌석 정보를 불러오는 중...</div>}
+          {seatError && <div style={{ marginTop: 7, fontSize: 10, color: "#b03030", fontFamily: ff }}>{seatError}</div>}
+          <div style={{ marginTop: 7, fontSize: 10, color: realtimeConnected ? "#367020" : "#9a7040", fontFamily: ff }}>
+            {realtimeConnected ? "● 실시간 연결됨" : "○ 실시간 재연결 중"}
           </div>
         </Panel>
 
@@ -1008,8 +1154,8 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
               <div style={{ fontSize: 10, color: "#7a5828", marginBottom: 10, fontFamily: ff }}>
                 구역: <strong>{seatedSeat?.zone}</strong>
               </div>
-              <button onClick={handleLeave} style={{ width: "100%", padding: "8px", fontSize: 12, fontWeight: 700, background: "linear-gradient(135deg,#8b5e3c,#6a3a1a)", color: "#f5e6c8", border: "2px solid #5a3010", boxShadow: "2px 2px 0 #3a1808", cursor: "pointer", fontFamily: ff }}>
-                🚪 퇴장하기
+              <button disabled={seatActionLoading} onClick={handleLeave} style={{ width: "100%", padding: "8px", fontSize: 12, fontWeight: 700, background: "linear-gradient(135deg,#8b5e3c,#6a3a1a)", color: "#f5e6c8", border: "2px solid #5a3010", boxShadow: "2px 2px 0 #3a1808", cursor: seatActionLoading ? "wait" : "pointer", fontFamily: ff }}>
+                {seatActionLoading ? "처리 중..." : "🚪 퇴장하기"}
               </button>
             </>
           ) : (
@@ -1055,8 +1201,8 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
                 <span style={{ color: "#4a8030", fontWeight: 700 }}>빈 좌석</span>
               </div>
             </div>
-            <button onClick={handleSit} style={{ marginTop: 10, width: "100%", padding: "9px", fontSize: 13, fontWeight: 700, background: "linear-gradient(135deg,#3a6030,#1e4018)", color: "#c0f0a0", border: "2px solid #1a3010", boxShadow: "2px 3px 0 #0e2008", cursor: "pointer", fontFamily: ff }}>
-              ✅ 착석하기
+            <button disabled={seatActionLoading} onClick={handleSit} style={{ marginTop: 10, width: "100%", padding: "9px", fontSize: 13, fontWeight: 700, background: "linear-gradient(135deg,#3a6030,#1e4018)", color: "#c0f0a0", border: "2px solid #1a3010", boxShadow: "2px 3px 0 #0e2008", cursor: seatActionLoading ? "wait" : "pointer", fontFamily: ff }}>
+              {seatActionLoading ? "처리 중..." : "✅ 착석하기"}
             </button>
             <button onClick={() => setSelectedId(null)} style={{ marginTop: 6, width: "100%", padding: "6px", fontSize: 11, background: "rgba(139,94,60,0.1)", border: "1px solid #c4a060", color: "#5a3010", cursor: "pointer", fontFamily: ff }}>
               취소
@@ -1201,7 +1347,7 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
               </div>
             ))}
           </div>
-          <div style={{ marginTop: 8, fontSize: 10, color: "#7a8060", textAlign: "center", fontFamily: ff }}>총 {seats.length}명 접속 중 · {channel}채널</div>
+          <div style={{ marginTop: 8, fontSize: 10, color: "#7a8060", textAlign: "center", fontFamily: ff }}>사용 중 {seats.filter(seat => seat.status === "occupied").length}석 · {channel?.channelNo ?? "-"}채널</div>
         </Panel>
       </div>
       </div>
@@ -1246,18 +1392,16 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
             </div>
           )}
 
-          {/* 마이크 on/off — 디스코드 스타일 (오피스 맵, 착석 중에만 조작 가능) */}
           {mapId === "sa" && seatedSeat && (
             <div style={{ position: "absolute", bottom: 12, right: 12, zIndex: 30, display: "flex", alignItems: "center", gap: 8 }}>
               <button
-                onClick={() => setMicOn(m => !m)}
+                onClick={() => setMicOn(current => !current)}
                 title={micOn ? "마이크 끄기" : "마이크 켜기"}
                 style={{
                   width: 40, height: 40, borderRadius: "50%",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  cursor: "pointer", transition: "all 0.15s",
+                  cursor: "pointer", transition: "all 0.15s", color: "#fff",
                   background: micOn ? "rgba(59,165,92,0.95)" : "rgba(237,66,69,0.95)",
-                  color: "#fff",
                   border: `2px solid ${micOn ? "#2d7d46" : "#a12d2f"}`,
                   boxShadow: selfSpeaking ? "0 0 0 4px rgba(59,165,92,0.45), 2px 2px 0 rgba(0,0,0,0.4)" : "2px 2px 0 rgba(0,0,0,0.4)",
                 }}
@@ -1274,7 +1418,6 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
             </div>
           )}
 
-          {/* 같은 구역(zone) 음성참여자 — 좌상단, 디스코드 채널 참여자 목록 스타일 (오피스 맵, 착석 중에만) */}
           {mapId === "sa" && seatedSeat && (
             <div style={{
               position: "absolute", top: 10, left: 10, zIndex: 30,
@@ -1286,8 +1429,8 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 <ZoneVoiceRow name={`${nickname} (나)`} micOn={micOn} speaking={micOn && selfSpeaking} />
-                {zoneMembers.map(m => (
-                  <ZoneVoiceRow key={m.id} name={m.name} micOn={m.micOn} speaking={m.speaking} />
+                {zoneMembers.map(member => (
+                  <ZoneVoiceRow key={member.id} name={member.name} micOn={member.micOn} speaking={member.speaking} />
                 ))}
               </div>
             </div>
@@ -1327,6 +1470,16 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
 
           {/* 공지사항 모달 */}
           {showNotice && <NoticeBoardModal onClose={() => setShowNotice(false)} />}
+
+          {/* Other occupants — 공개 프로필은 캐릭터만 표시 */}
+          {otherOccupiedSeats.map(seat => (
+            <div
+              key={`occupant-${seat.id}`}
+              style={{ position: "absolute", left: `${(seat.x / MAP_W) * 100}%`, top: `${(seat.y / MAP_H) * 100}%`, transform: "translate(-50%, calc(-100% + 5px))", zIndex: 24, pointerEvents: "none", filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.85))" }}
+            >
+              <SeatSprite charId={seat.characterId!} seatId={seat.id} size={52} />
+            </div>
+          ))}
 
           {/* Seated character */}
           {seatedSeat && (

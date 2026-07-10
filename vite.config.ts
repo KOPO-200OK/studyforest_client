@@ -17,10 +17,8 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
-      // 스터디스페이스 실시간(WebSocket/STOMP) 엔드포인트
       '/ws-studyspace': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
+        target: 'ws://localhost:8080',
         ws: true,
       },
     },
