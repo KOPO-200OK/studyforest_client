@@ -17,6 +17,12 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      // 스터디스페이스 실시간(WebSocket/STOMP) 엔드포인트
+      '/ws-studyspace': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
   // 통합 배포 시: 아래 outDir 주석을 풀어 Spring static으로 바로 빌드
