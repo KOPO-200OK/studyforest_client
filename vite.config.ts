@@ -17,6 +17,10 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      '/ws-studyspace': {
+        target: 'ws://localhost:8080',
+        ws: true,
+      },
     },
   },
   // 통합 배포 시: 아래 outDir 주석을 풀어 Spring static으로 바로 빌드

@@ -154,6 +154,7 @@ import { getDisabledSeatIds } from "@/data/seatConfig";
 import { useSidebar } from "@/context/SidebarContext";
 import { ApiError } from "@/api/client";
 import { studySpaceApi, type StudyChannel, type StudyRoom } from "@/api/studySpaceApi";
+import { connectStudySpaceSocket, type SeatEvent } from "@/api/studySpaceSocket";
 
 // 스프라이트 시트: 4열 × 2행 배치
 const SHEET_COLS = 4;
@@ -807,6 +808,7 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   const [seatLoading, setSeatLoading] = useState(false);
   const [seatActionLoading, setSeatActionLoading] = useState(false);
   const [seatError, setSeatError] = useState<string | null>(null);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
 
   const currentMap = MAPS[mapId];
 
@@ -857,6 +859,33 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
     return () => { cancelled = true; };
   }, [channel, mapId]);
 
+  useEffect(() => {
+    if (!channel) return;
+    return connectStudySpaceSocket({
+      channelId: channel.studyChannelId,
+      studySessionId,
+      onSeatEvent: event => applySeatEvent(event),
+      onSessionTick: tick => setTimerSecs(tick.displayElapsedSeconds),
+      onConnectionChange: connected => {
+        setRealtimeConnected(connected);
+        if (connected) setSeatError(null);
+      },
+      onError: message => setSeatError(message),
+    });
+  }, [channel, studySessionId]);
+
+  function applySeatEvent(event: SeatEvent) {
+    setSeats(current => current.map(seat => {
+      if (seat.serverId !== event.seatId) return seat;
+      if (event.type === "VACATED") return { ...seat, status: "available" };
+      if (event.type === "DISABLED") return { ...seat, status: "disabled" };
+      return { ...seat, status: "occupied" };
+    }));
+    if (event.type === "VACATED") {
+      setSelectedId(current => current === event.seatNo ? null : current);
+    }
+  }
+
   function handleSelectMap(id: MapId) {
     if (id === mapId || studySessionId !== null) return;
     setMapId(id);
@@ -876,7 +905,7 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   }, [timerOn]);
 
   useEffect(() => {
-    if (studySessionId === null) return;
+    if (studySessionId === null || realtimeConnected) return;
     const sendHeartbeat = () => {
       studySpaceApi.heartbeat(studySessionId)
         .then(tick => setTimerSecs(tick.displayElapsedSeconds))
@@ -884,7 +913,7 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
     };
     const id = window.setInterval(sendHeartbeat, 30_000);
     return () => window.clearInterval(id);
-  }, [studySessionId]);
+  }, [studySessionId, realtimeConnected]);
 
   const fmtTimer = (s: number) => {
     const h = Math.floor(s / 3600);
@@ -1006,6 +1035,9 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
           </div>
           {seatLoading && <div style={{ marginTop: 7, fontSize: 10, color: "#7a5828", fontFamily: ff }}>좌석 정보를 불러오는 중...</div>}
           {seatError && <div style={{ marginTop: 7, fontSize: 10, color: "#b03030", fontFamily: ff }}>{seatError}</div>}
+          <div style={{ marginTop: 7, fontSize: 10, color: realtimeConnected ? "#367020" : "#9a7040", fontFamily: ff }}>
+            {realtimeConnected ? "● 실시간 연결됨" : "○ 실시간 재연결 중"}
+          </div>
         </Panel>
 
         {/* Seat entry panel */}
