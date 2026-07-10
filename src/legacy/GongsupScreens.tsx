@@ -371,7 +371,7 @@ function TodoContent({ todos, remove, add }: { todos: Todo[]; remove: (id: numbe
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && submit()}
+          onKeyUp={e => { if (e.key === "Enter") submit(); }}
           placeholder="할 일 추가..."
           style={{ flex: 1, fontSize: 11, padding: "6px 8px", background: "rgba(240,220,160,0.45)", border: "1px solid #c4a060", outline: "none", color: "#2a1808", fontFamily: ff }}
         />
@@ -2123,7 +2123,7 @@ export function QuestionBankPage() {
             </div>
             <div style={{ display:"flex", gap:8 }}>
               <input value={aiQ} onChange={e=>setAiQ(e.target.value)}
-                onKeyDown={e=>e.key==="Enter" && sendAI()}
+                onKeyUp={e=>e.key==="Enter" && sendAI()}
                 placeholder="한국사에 대해 질문하세요..."
                 style={{ flex:1, padding:"10px 12px", fontSize:12, fontFamily:ff,
                   background:"rgba(240,220,160,0.35)", border:"2px solid #c4a060",
