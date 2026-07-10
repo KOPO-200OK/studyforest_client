@@ -139,6 +139,17 @@ const CUTOUT_HEIGHT = 70;
 // 좌석별 방향 번호 (좌석/벤치가 놓인 방향 — 캐릭터와 무관하게 고정)
 function getSeatDirection(seatId: number): number {
   if (seatId >= 101 && seatId < 200) return 1;                                          // 서당: 전원 선생님(정면 상단)을 바라봄 = 후면
+  if (seatId >= 301 && seatId < 400) {                                                  // 오피스
+    if ([326, 309, 310, 313, 314].includes(seatId)) return 1;
+    if ([305, 322].includes(seatId)) return 2;
+    if ([303, 324, 315, 317].includes(seatId)) return 3;
+    if ([301, 320].includes(seatId)) return 4;
+    if ([307, 308, 311, 312, 319].includes(seatId)) return 5;
+    if ([302, 321].includes(seatId)) return 6;
+    if ([304, 325, 316, 318].includes(seatId)) return 7;
+    if ([306, 323].includes(seatId)) return 8;
+    return 5;
+  }
   if (seatId >= 201 && seatId < 300) {                                                  // 카페
     if ([201, 203, 205, 207, 209, 211, 213, 215, 222].includes(seatId)) return 3;        // 우측
     if ([202, 204, 206, 208, 210, 212, 214, 216, 223].includes(seatId)) return 7;        // 좌측
