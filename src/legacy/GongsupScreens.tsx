@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   CheckCircle2, Circle, MessageCircle, PenLine, BarChart2,
   BookOpen, Bell, Send, Target, ChevronRight,
-  Clock, Play, Pause, RotateCcw,
+  Clock, Play, Pause, RotateCcw, Mic, MicOff,
 } from "lucide-react";
 
 // ── 맵: 공숲 (시간대별 이미지) ─────────────────────────────────────
@@ -65,6 +65,7 @@ import c2d8 from "@/imports/character_cuts_outer_only_all/prehistoric_female/tri
 import c3d1 from "@/imports/character_cuts_outer_only_all/hwarang_male/trimmed/화랑_남_1.png";
 import c3d2 from "@/imports/character_cuts_outer_only_all/hwarang_male/trimmed/화랑_남_2.png";
 import c3d3 from "@/imports/character_cuts_outer_only_all/hwarang_male/trimmed/화랑_남_3.png";
+import c3d4 from "@/imports/character_cuts_outer_only_all/hwarang_male/trimmed/화랑_남_4.png";
 import c3d5 from "@/imports/character_cuts_outer_only_all/hwarang_male/trimmed/화랑_남_5.png";
 import c3d6 from "@/imports/character_cuts_outer_only_all/hwarang_male/trimmed/화랑_남_6.png";
 import c3d7 from "@/imports/character_cuts_outer_only_all/hwarang_male/trimmed/화랑_남_7.png";
@@ -74,6 +75,7 @@ import c3d8 from "@/imports/character_cuts_outer_only_all/hwarang_male/trimmed/�
 import c4d1 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_1.png";
 import c4d2 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_2.png";
 import c4d3 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_3.png";
+import c4d4 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_4.png";
 import c4d5 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_5.png";
 import c4d6 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_6.png";
 import c4d7 from "@/imports/character_cuts_outer_only_all/hwarang_female/trimmed/화랑_여_7.png";
@@ -122,8 +124,8 @@ import c8d8 from "@/imports/character_cuts_outer_only_all/modern_female/trimmed/
 const CUTOUT_SPRITES: Partial<Record<number, Partial<Record<number, string>>>> = {
   1: { 1: c1d1, 2: c1d2, 3: c1d3, 4: c1d4, 5: c1d5, 6: c1d6, 7: c1d7, 8: c1d8 },
   2: { 1: c2d1, 2: c2d2, 3: c2d3, 4: c2d4, 5: c2d5, 6: c2d6, 7: c2d7, 8: c2d8 },
-  3: { 1: c3d1, 2: c3d2, 3: c3d3, 5: c3d5, 6: c3d6, 7: c3d7, 8: c3d8 },
-  4: { 1: c4d1, 2: c4d2, 3: c4d3, 5: c4d5, 6: c4d6, 7: c4d7, 8: c4d8 },
+  3: { 1: c3d1, 2: c3d2, 3: c3d3, 4: c3d4, 5: c3d5, 6: c3d6, 7: c3d7, 8: c3d8 },
+  4: { 1: c4d1, 2: c4d2, 3: c4d3, 4: c4d4, 5: c4d5, 6: c4d6, 7: c4d7, 8: c4d8 },
   5: { 1: c5d1, 2: c5d2, 3: c5d3, 4: c5d4, 5: c5d5, 6: c5d6, 7: c5d7, 8: c5d8 },
   6: { 1: c6d1, 2: c6d2, 3: c6d3, 4: c6d4, 5: c6d5, 6: c6d6, 7: c6d7, 8: c6d8 },
   7: { 1: c7d1, 2: c7d2, 3: c7d3, 4: c7d4, 5: c7d5, 6: c7d6, 7: c7d7, 8: c7d8 },
@@ -137,11 +139,22 @@ const CUTOUT_HEIGHT = 70;
 // 좌석별 방향 번호 (좌석/벤치가 놓인 방향 — 캐릭터와 무관하게 고정)
 function getSeatDirection(seatId: number): number {
   if (seatId >= 101 && seatId < 200) return 1;                                          // 서당: 전원 선생님(정면 상단)을 바라봄 = 후면
+  if (seatId >= 301 && seatId < 400) {                                                  // 오피스
+    if ([326, 309, 310, 313, 314].includes(seatId)) return 1;
+    if ([305, 322].includes(seatId)) return 2;
+    if ([303, 324, 315, 317].includes(seatId)) return 3;
+    if ([301, 320].includes(seatId)) return 4;
+    if ([307, 308, 311, 312, 319].includes(seatId)) return 5;
+    if ([302, 321].includes(seatId)) return 6;
+    if ([304, 325, 316, 318].includes(seatId)) return 7;
+    if ([306, 323].includes(seatId)) return 8;
+    return 5;
+  }
   if (seatId >= 201 && seatId < 300) {                                                  // 카페
     if ([201, 203, 205, 207, 209, 211, 213, 215, 222].includes(seatId)) return 3;        // 우측
     if ([202, 204, 206, 208, 210, 212, 214, 216, 223].includes(seatId)) return 7;        // 좌측
-    if ([224, 225, 226, 227, 228, 220, 221].includes(seatId)) return 5;                  // 정면
-    if ([217, 218, 219].includes(seatId)) return 4;                                      // 앞우
+    if ([224, 225, 226, 227, 228, 220, 221].includes(seatId)) return 1;                  // 후면
+    if ([217, 218].includes(seatId)) return 5;                                           // 정면
     return 5;
   }
   if ([1, 10].includes(seatId)) return 5;                                              // 정면
@@ -188,7 +201,7 @@ function SeatSprite({ charId, seatId, size = 56 }: {
 }) {
   const cutouts = CUTOUT_SPRITES[charId];
   if (cutouts) {
-    const cutoutSrc = cutouts[getSeatDirection(seatId)];
+    const cutoutSrc = cutouts[getSeatDirection(seatId)] ?? cutouts[5];
     if (cutoutSrc) {
       return <img src={cutoutSrc} alt="" style={{ height: CUTOUT_HEIGHT, width: "auto", display: "block" }} />;
     }
@@ -633,39 +646,38 @@ export const SEODANG_SEATS: Omit<Seat, "status">[] = [
 
 // 카페 맵 좌석 (id 201~) — 1차 배치, 실측 후 미세조정 필요
 export const CAFE_SEATS: Omit<Seat, "status">[] = [
-  // 창가 2인석 (2줄) — 새 카페 이미지 기준 재배치
-  { id: 201, x: 177, y: 257, zone: "카페 창가" },
-  { id: 202, x: 272, y: 257, zone: "카페 창가" },
-  { id: 203, x: 167, y: 347, zone: "카페 창가" },
-  { id: 204, x: 251, y: 358, zone: "카페 창가" },
+  // 창가 2인석 (2줄) — 화면 좌표 기준 재배치
+  { id: 201, x: 184, y: 260, zone: "카페 창가" },
+  { id: 202, x: 264, y: 259, zone: "카페 창가" },
+  { id: 203, x: 169, y: 347, zone: "카페 창가" },
+  { id: 204, x: 250, y: 349, zone: "카페 창가" },
   // 안쪽 2인석
-  { id: 205, x: 108, y: 439, zone: "카페 안쪽" },
-  { id: 206, x: 191, y: 447, zone: "카페 안쪽" },
-  { id: 207, x: 76,  y: 536, zone: "카페 안쪽" },
-  { id: 208, x: 162, y: 545, zone: "카페 안쪽" },
+  { id: 205, x: 107, y: 443, zone: "카페 안쪽" },
+  { id: 206, x: 192, y: 443, zone: "카페 안쪽" },
+  { id: 207, x: 79,  y: 554, zone: "카페 안쪽" },
+  { id: 208, x: 166, y: 553, zone: "카페 안쪽" },
   // 단체석 (긴 테이블)
-  { id: 209, x: 324, y: 293, zone: "카페 단체석" },
-  { id: 210, x: 435, y: 293, zone: "카페 단체석" },
-  { id: 211, x: 324, y: 356, zone: "카페 단체석" },
-  { id: 212, x: 435, y: 356, zone: "카페 단체석" },
-  { id: 213, x: 324, y: 409, zone: "카페 단체석" },
-  { id: 214, x: 435, y: 409, zone: "카페 단체석" },
-  { id: 215, x: 324, y: 466, zone: "카페 단체석" },
-  { id: 216, x: 435, y: 466, zone: "카페 단체석" },
+  { id: 209, x: 337, y: 307, zone: "카페 단체석" },
+  { id: 210, x: 420, y: 308, zone: "카페 단체석" },
+  { id: 211, x: 337, y: 349, zone: "카페 단체석" },
+  { id: 212, x: 420, y: 351, zone: "카페 단체석" },
+  { id: 213, x: 337, y: 393, zone: "카페 단체석" },
+  { id: 214, x: 419, y: 394, zone: "카페 단체석" },
+  { id: 215, x: 336, y: 437, zone: "카페 단체석" },
+  { id: 216, x: 419, y: 436, zone: "카페 단체석" },
   // 라운지 (소파)
-  { id: 217, x: 731, y: 285, zone: "카페 라운지" },
-  { id: 218, x: 781, y: 285, zone: "카페 라운지" },
-  { id: 219, x: 826, y: 285, zone: "카페 라운지" },
-  { id: 220, x: 727, y: 412, zone: "카페 라운지" },
-  { id: 221, x: 778, y: 412, zone: "카페 라운지" },
+  { id: 217, x: 723, y: 297, zone: "카페 라운지" },
+  { id: 218, x: 765, y: 297, zone: "카페 라운지" },
+  { id: 220, x: 737, y: 395, zone: "카페 라운지" },
+  { id: 221, x: 773, y: 394, zone: "카페 라운지" },
   // 안쪽 테이블
-  { id: 222, x: 502, y: 501, zone: "카페 테이블" },
-  { id: 223, x: 562, y: 501, zone: "카페 테이블" },
-  { id: 224, x: 648, y: 536, zone: "카페 테이블" },
-  { id: 225, x: 692, y: 536, zone: "카페 테이블" },
-  { id: 226, x: 737, y: 536, zone: "카페 테이블" },
-  { id: 227, x: 807, y: 536, zone: "카페 테이블" },
-  { id: 228, x: 858, y: 536, zone: "카페 테이블" },
+  { id: 222, x: 485, y: 490, zone: "카페 테이블" },
+  { id: 223, x: 575, y: 492, zone: "카페 테이블" },
+  { id: 224, x: 659, y: 541, zone: "카페 테이블" },
+  { id: 225, x: 701, y: 539, zone: "카페 테이블" },
+  { id: 226, x: 739, y: 539, zone: "카페 테이블" },
+  { id: 227, x: 827, y: 542, zone: "카페 테이블" },
+  { id: 228, x: 859, y: 542, zone: "카페 테이블" },
 ];
 
 // 오피스 맵 좌석 (id 301~) — 1차 배치, 실측 후 미세조정 필요
@@ -793,6 +805,23 @@ function SeatMarker({ seat, isSelected, onClick }: { seat: Seat; isSelected: boo
   );
 }
 
+function ZoneVoiceRow({ name, micOn, speaking }: { name: string; micOn: boolean; speaking: boolean }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{
+        width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
+        background: speaking ? "#3ba55c" : "#4a4030",
+        boxShadow: speaking ? "0 0 6px #3ba55c, 0 0 10px rgba(59,165,92,0.7)" : "none",
+        transition: "all 0.15s",
+      }} />
+      <span style={{ fontSize: 10, fontFamily: ff, color: "#e8d8b8", flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        {name}
+      </span>
+      {micOn ? <Mic size={11} color="#8ee0a8" /> : <MicOff size={11} color="#c86868" />}
+    </div>
+  );
+}
+
 /* ── STUDY ROOM PAGE ──────────────────────────────────────────── */
 export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   todos: Todo[]; remove: (id: number) => void; add: (text: string) => void;
@@ -817,6 +846,9 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   const [seatActionLoading, setSeatActionLoading] = useState(false);
   const [seatError, setSeatError] = useState<string | null>(null);
   const [realtimeConnected, setRealtimeConnected] = useState(false);
+  const [micOn, setMicOn] = useState(false);
+  const [zoneMembers, setZoneMembers] = useState<{ id: number; name: string; micOn: boolean; speaking: boolean }[]>([]);
+  const [selfSpeaking, setSelfSpeaking] = useState(false);
 
   const currentMap = MAPS[mapId];
 
@@ -901,6 +933,7 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
     setSeats(makeSeats(MAPS[id].seats));
     setSelectedId(null);
     setShowSeats(false);
+    setMicOn(false);
   }
 
   // ── 타이머 ──────────────────────────────────────────────────────
@@ -912,6 +945,75 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
     const id = setInterval(() => setTimerSecs(s => s + 1), 1000);
     return () => clearInterval(id);
   }, [timerOn]);
+
+  const seatedZone = seats.find(seat => seat.id === seatedAt)?.zone ?? null;
+
+  useEffect(() => {
+    setZoneMembers([]);
+    if (mapId !== "sa" || !seatedZone) return;
+    const pool = ["옆자리민서", "동료찬호", "인턴하영", "대리지훈"].sort(() => Math.random() - 0.5);
+    const count = 1 + Math.floor(Math.random() * 2);
+    const timers = pool.slice(0, count).map((name, index) =>
+      window.setTimeout(() => {
+        setZoneMembers(current => [...current, {
+          id: Date.now() + index,
+          name,
+          micOn: Math.random() > 0.4,
+          speaking: false,
+        }]);
+      }, 900 + index * 1400),
+    );
+    return () => timers.forEach(window.clearTimeout);
+  }, [mapId, seatedZone]);
+
+  useEffect(() => {
+    if (zoneMembers.length === 0) return;
+    const id = window.setInterval(() => {
+      setZoneMembers(current => current.map(member => ({
+        ...member,
+        speaking: member.micOn && Math.random() < 0.35,
+      })));
+    }, 1400);
+    return () => window.clearInterval(id);
+  }, [zoneMembers.length]);
+
+  useEffect(() => {
+    if (!micOn || !seatedAt) {
+      setSelfSpeaking(false);
+      return;
+    }
+    let cancelled = false;
+    let animationFrame = 0;
+    let audioContext: AudioContext | null = null;
+    let stream: MediaStream | null = null;
+
+    navigator.mediaDevices?.getUserMedia({ audio: true }).then(mediaStream => {
+      if (cancelled) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        return;
+      }
+      stream = mediaStream;
+      audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(mediaStream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        analyser.getByteFrequencyData(data);
+        setSelfSpeaking(data.reduce((sum, value) => sum + value, 0) / data.length > 12);
+        animationFrame = requestAnimationFrame(tick);
+      };
+      tick();
+    }).catch(() => setSelfSpeaking(false));
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(animationFrame);
+      stream?.getTracks().forEach(track => track.stop());
+      void audioContext?.close();
+    };
+  }, [micOn, seatedAt]);
 
   useEffect(() => {
     if (studySessionId === null || realtimeConnected) return;
@@ -981,6 +1083,7 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
       setSeatedAt(null);
       setStudySessionId(null);
       setTimerOn(false);
+      setMicOn(false);
     } catch (error) {
       setSeatError(getSeatErrorMessage(error));
     } finally {
@@ -1297,6 +1400,50 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
                   </button>
                 );
               })}
+            </div>
+          )}
+
+          {mapId === "sa" && seatedSeat && (
+            <div style={{ position: "absolute", bottom: 12, right: 12, zIndex: 30, display: "flex", alignItems: "center", gap: 8 }}>
+              <button
+                onClick={() => setMicOn(current => !current)}
+                title={micOn ? "마이크 끄기" : "마이크 켜기"}
+                style={{
+                  width: 40, height: 40, borderRadius: "50%",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", transition: "all 0.15s", color: "#fff",
+                  background: micOn ? "rgba(59,165,92,0.95)" : "rgba(237,66,69,0.95)",
+                  border: `2px solid ${micOn ? "#2d7d46" : "#a12d2f"}`,
+                  boxShadow: selfSpeaking ? "0 0 0 4px rgba(59,165,92,0.45), 2px 2px 0 rgba(0,0,0,0.4)" : "2px 2px 0 rgba(0,0,0,0.4)",
+                }}
+              >
+                {micOn ? <Mic size={18} /> : <MicOff size={18} />}
+              </button>
+              <span style={{
+                fontSize: 10, fontWeight: 700, fontFamily: ff, padding: "4px 8px",
+                background: "rgba(16,8,2,0.78)", color: micOn ? "#8ee0a8" : "#f0a0a0",
+                border: `1px solid ${micOn ? "#2d7d46" : "#a12d2f"}`,
+              }}>
+                {micOn ? "🎤 마이크 켜짐" : "🔇 마이크 꺼짐"}
+              </span>
+            </div>
+          )}
+
+          {mapId === "sa" && seatedSeat && (
+            <div style={{
+              position: "absolute", top: 10, left: 10, zIndex: 30,
+              minWidth: 150, background: "rgba(16,8,2,0.82)", border: "2px solid #5a3010",
+              boxShadow: "2px 2px 0 rgba(0,0,0,0.4)", padding: "6px 8px",
+            }}>
+              <div style={{ fontSize: 9, fontWeight: 700, fontFamily: ff, color: "#c8a060", letterSpacing: "0.04em", marginBottom: 5 }}>
+                🔊 {seatedSeat.zone}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <ZoneVoiceRow name={`${nickname} (나)`} micOn={micOn} speaking={micOn && selfSpeaking} />
+                {zoneMembers.map(member => (
+                  <ZoneVoiceRow key={member.id} name={member.name} micOn={member.micOn} speaking={member.speaking} />
+                ))}
+              </div>
             </div>
           )}
 
