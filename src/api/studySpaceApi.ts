@@ -17,6 +17,7 @@ export interface SeatStatus {
   seatNo: number;
   active: boolean;
   occupied: boolean;
+  characterId: number | null;
 }
 
 export interface StudySession {
