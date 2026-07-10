@@ -6,9 +6,9 @@ const ADMIN_MENU = [
   { to: "members", label: "회원 관리" },
   { to: "questions", label: "문제 관리" },
   { to: "notices", label: "공지사항 관리" },
-  { to: "ai", label: "AI 관리" },
   { to: "jangwon", label: "장원급제 관리" },
   { to: "study-rooms", label: "스터디 공간 관리" },
+  { to: "inquiries", label: "문의 관리" },
 ];
 
 export default function AdminLayout() {

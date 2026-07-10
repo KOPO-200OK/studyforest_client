@@ -9,6 +9,7 @@ import SelectCharacterPage from "@/pages/SelectCharacterPage";
 import StudyRoomPage from "@/pages/StudyRoomPage";
 import MyStudyPage from "@/pages/MyStudyPage";
 import JangwonPage from "@/pages/JangwonPage";
+import InquiryPage from "@/pages/InquiryPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
 // 관리자
@@ -16,9 +17,9 @@ import AdminLayout from "@/layouts/AdminLayout";
 import AdminMembersPage from "@/pages/admin/AdminMembersPage";
 import AdminQuestionsPage from "@/pages/admin/AdminQuestionsPage";
 import AdminNoticesPage from "@/pages/admin/AdminNoticesPage";
-import AdminAiPage from "@/pages/admin/AdminAiPage";
 import AdminJangwonPage from "@/pages/admin/AdminJangwonPage";
 import AdminStudyRoomsPage from "@/pages/admin/AdminStudyRoomsPage";
+import AdminInquiriesPage from "@/pages/admin/AdminInquiriesPage";
 
 // 문제은행 모듈 (담당: 주미) — ERD 화면설계서 라우터 기준
 import QuestionBankHome from "@/pages/question/QuestionBankHome";
@@ -45,6 +46,7 @@ export const router = createBrowserRouter([
       { path: "study-room", element: <StudyRoomPage /> },
       { path: "my-study", element: <MyStudyPage /> },
       { path: "jangwon", element: <JangwonPage /> },
+      { path: "inquiry", element: <InquiryPage /> },
 
       // ── 관리자 ──
       { path: "admin", element: <AdminLayout />, children: [
@@ -52,9 +54,9 @@ export const router = createBrowserRouter([
         { path: "members", element: <AdminMembersPage /> },
         { path: "questions", element: <AdminQuestionsPage /> },
         { path: "notices", element: <AdminNoticesPage /> },
-        { path: "ai", element: <AdminAiPage /> },
         { path: "jangwon", element: <AdminJangwonPage /> },
         { path: "study-rooms", element: <AdminStudyRoomsPage /> },
+        { path: "inquiries", element: <AdminInquiriesPage /> },
       ]},
 
       // ── 문제은행 (module 3) ──

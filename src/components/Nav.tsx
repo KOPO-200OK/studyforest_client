@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { to: "/question-bank",label: "문제은행" },
   { to: "/my-study",     label: "나의 공부" },
   { to: "/jangwon",      label: "장원급제" },
+  { to: "/inquiry",      label: "문의하기" },
   { to: "/admin",        label: "관리자" },
 ];
 

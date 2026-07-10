@@ -45,6 +45,7 @@ const SPRITE_SHEETS: Partial<Record<number, string>> = {
 import c1d1 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_1.png";
 import c1d2 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_2.png";
 import c1d3 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_3.png";
+import c1d4 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_4.png";
 import c1d5 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_5.png";
 import c1d6 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_6.png";
 import c1d7 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_7.png";
@@ -119,7 +120,7 @@ import c8d7 from "@/imports/character_cuts_outer_only_all/modern_female/trimmed/
 import c8d8 from "@/imports/character_cuts_outer_only_all/modern_female/trimmed/근대_여_8.png";
 
 const CUTOUT_SPRITES: Partial<Record<number, Partial<Record<number, string>>>> = {
-  1: { 1: c1d1, 2: c1d2, 3: c1d3, 5: c1d5, 6: c1d6, 7: c1d7, 8: c1d8 },
+  1: { 1: c1d1, 2: c1d2, 3: c1d3, 4: c1d4, 5: c1d5, 6: c1d6, 7: c1d7, 8: c1d8 },
   2: { 1: c2d1, 2: c2d2, 3: c2d3, 4: c2d4, 5: c2d5, 6: c2d6, 7: c2d7, 8: c2d8 },
   3: { 1: c3d1, 2: c3d2, 3: c3d3, 5: c3d5, 6: c3d6, 7: c3d7, 8: c3d8 },
   4: { 1: c4d1, 2: c4d2, 3: c4d3, 5: c4d5, 6: c4d6, 7: c4d7, 8: c4d8 },
@@ -135,7 +136,14 @@ const CUTOUT_HEIGHT = 70;
 
 // 좌석별 방향 번호 (좌석/벤치가 놓인 방향 — 캐릭터와 무관하게 고정)
 function getSeatDirection(seatId: number): number {
-  if (seatId >= 101) return 1;                                                          // 서당: 전원 선생님(정면 상단)을 바라봄 = 후면
+  if (seatId >= 101 && seatId < 200) return 1;                                          // 서당: 전원 선생님(정면 상단)을 바라봄 = 후면
+  if (seatId >= 201 && seatId < 300) {                                                  // 카페
+    if ([201, 203, 205, 207, 209, 211, 213, 215, 222].includes(seatId)) return 3;        // 우측
+    if ([202, 204, 206, 208, 210, 212, 214, 216, 223].includes(seatId)) return 7;        // 좌측
+    if ([224, 225, 226, 227, 228, 220, 221].includes(seatId)) return 5;                  // 정면
+    if ([217, 218, 219].includes(seatId)) return 4;                                      // 앞우
+    return 5;
+  }
   if ([1, 10].includes(seatId)) return 5;                                              // 정면
   if ([2, 3, 4, 5, 6, 7, 8, 9, 14, 15, 20, 21].includes(seatId)) return 1;              // 후면
   if ([11, 18, 23].includes(seatId)) return 7;                                          // 왼쪽 보기
@@ -659,38 +667,38 @@ export const CAFE_SEATS: Omit<Seat, "status">[] = [
 
 // 오피스 맵 좌석 (id 301~) — 1차 배치, 실측 후 미세조정 필요
 export const SA_SEATS: Omit<Seat, "status">[] = [
-  // Zone 1 (원탁)
-  { id: 301, x: 163, y: 160, zone: "Zone 1" },
-  { id: 302, x: 259, y: 160, zone: "Zone 1" },
-  { id: 303, x: 136, y: 203, zone: "Zone 1" },
-  { id: 304, x: 273, y: 200, zone: "Zone 1" },
-  { id: 305, x: 163, y: 247, zone: "Zone 1" },
-  { id: 306, x: 256, y: 247, zone: "Zone 1" },
-  // Zone 2
-  { id: 307, x: 506, y: 80,  zone: "Zone 2" },
-  { id: 308, x: 552, y: 80,  zone: "Zone 2" },
-  { id: 309, x: 506, y: 130, zone: "Zone 2" },
-  { id: 310, x: 552, y: 130, zone: "Zone 2" },
-  // Zone 2-1
-  { id: 311, x: 709, y: 80,  zone: "Zone 2-1" },
-  { id: 312, x: 755, y: 80,  zone: "Zone 2-1" },
-  { id: 313, x: 709, y: 130, zone: "Zone 2-1" },
-  { id: 314, x: 755, y: 130, zone: "Zone 2-1" },
-  // Zone 4
-  { id: 315, x: 469, y: 290, zone: "Zone 4" },
-  { id: 316, x: 562, y: 290, zone: "Zone 4" },
-  { id: 317, x: 469, y: 350, zone: "Zone 4" },
-  { id: 318, x: 562, y: 350, zone: "Zone 4" },
-  // Zone 5
-  { id: 319, x: 745, y: 307, zone: "Zone 5" },
-  { id: 320, x: 765, y: 280, zone: "Zone 5" },
-  { id: 321, x: 805, y: 270, zone: "Zone 5" },
-  { id: 322, x: 842, y: 280, zone: "Zone 5" },
-  { id: 323, x: 862, y: 307, zone: "Zone 5" },
-  // 체리블라썸 허브
-  { id: 324, x: 153, y: 430, zone: "체리블라썸 허브" },
-  { id: 325, x: 273, y: 427, zone: "체리블라썸 허브" },
-  { id: 326, x: 210, y: 477, zone: "체리블라썸 허브" },
+  // Zone 1 큰 회의실 — 새 오피스 이미지 기준 재배치
+  { id: 301, x: 169, y: 175, zone: "Zone 1 큰 회의실" },
+  { id: 302, x: 282, y: 173, zone: "Zone 1 큰 회의실" },
+  { id: 303, x: 153, y: 220, zone: "Zone 1 큰 회의실" },
+  { id: 304, x: 297, y: 217, zone: "Zone 1 큰 회의실" },
+  { id: 305, x: 166, y: 264, zone: "Zone 1 큰 회의실" },
+  { id: 306, x: 285, y: 264, zone: "Zone 1 큰 회의실" },
+  // Zone 2 왼쪽 방
+  { id: 307, x: 510, y: 105, zone: "Zone 2 왼쪽 방" },
+  { id: 308, x: 554, y: 105, zone: "Zone 2 왼쪽 방" },
+  { id: 309, x: 510, y: 170, zone: "Zone 2 왼쪽 방" },
+  { id: 310, x: 554, y: 170, zone: "Zone 2 왼쪽 방" },
+  // Zone 2-1 오른쪽 방
+  { id: 311, x: 714, y: 104, zone: "Zone 2-1 오른쪽 방" },
+  { id: 312, x: 760, y: 105, zone: "Zone 2-1 오른쪽 방" },
+  { id: 313, x: 714, y: 170, zone: "Zone 2-1 오른쪽 방" },
+  { id: 314, x: 758, y: 171, zone: "Zone 2-1 오른쪽 방" },
+  // 중앙 회의석
+  { id: 315, x: 476, y: 342, zone: "중앙 회의석" },
+  { id: 316, x: 580, y: 342, zone: "중앙 회의석" },
+  { id: 317, x: 476, y: 388, zone: "중앙 회의석" },
+  { id: 318, x: 581, y: 388, zone: "중앙 회의석" },
+  // 오른쪽 원형 회의석
+  { id: 319, x: 826, y: 325, zone: "오른쪽 원형 회의석" },
+  { id: 320, x: 774, y: 346, zone: "오른쪽 원형 회의석" },
+  { id: 321, x: 880, y: 346, zone: "오른쪽 원형 회의석" },
+  { id: 322, x: 774, y: 395, zone: "오른쪽 원형 회의석" },
+  { id: 323, x: 880, y: 396, zone: "오른쪽 원형 회의석" },
+  // Cherry Blossom Hub
+  { id: 324, x: 154, y: 463, zone: "Cherry Blossom Hub" },
+  { id: 325, x: 270, y: 464, zone: "Cherry Blossom Hub" },
+  { id: 326, x: 209, y: 518, zone: "Cherry Blossom Hub" },
 ];
 
 // pre-occupied seats for visual context
@@ -855,12 +863,12 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
     "카페 단체석":  "#5a3010",
     "카페 라운지":  "#3a5a2a",
     "카페 테이블":  "#7a5020",
-    "Zone 1":       "#1a5a7a",
-    "Zone 2":       "#2a4a6a",
-    "Zone 2-1":     "#2a4a6a",
-    "Zone 4":       "#6a5a2a",
-    "Zone 5":       "#7a3a2a",
-    "체리블라썸 허브": "#a05070",
+    "Zone 1 큰 회의실":    "#1a5a7a",
+    "Zone 2 왼쪽 방":      "#2a4a6a",
+    "Zone 2-1 오른쪽 방":  "#2a4a6a",
+    "중앙 회의석":         "#6a5a2a",
+    "오른쪽 원형 회의석":  "#7a3a2a",
+    "Cherry Blossom Hub": "#a05070",
   };
 
   return (

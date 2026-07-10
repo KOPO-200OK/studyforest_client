@@ -8,24 +8,29 @@ export default function FindPasswordPage() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [password, setPassword] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!email || !name || !birthDate) {
+    if (!email || !name || !birthDate || !newPassword || !confirmPassword) {
       setError("모든 항목을 입력해주세요");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("새 비밀번호가 일치하지 않습니다");
       return;
     }
     setLoading(true);
     setError(null);
-    setPassword(null);
     try {
-      const found = await mockAuthApi.findPassword(email, name, birthDate);
-      setPassword(found);
+      await mockAuthApi.resetPassword(email, name, birthDate, newPassword);
+      setDone(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "비밀번호를 찾을 수 없습니다");
+      setError(err instanceof Error ? err.message : "비밀번호를 변경할 수 없습니다");
     } finally {
       setLoading(false);
     }
@@ -36,15 +41,14 @@ export default function FindPasswordPage() {
       <Card style={{ width: 320, display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, marginBottom: 4 }}>
           <span style={{ fontSize: 32, lineHeight: 1 }}>🔑</span>
-          <span style={{ fontFamily: fs, fontWeight: 700, fontSize: 20, color: C.inkDark }}>비밀번호 찾기</span>
-          <span style={{ fontSize: 11, color: C.inkMid }}>이메일·이름·생년월일로 비밀번호를 찾아드려요</span>
+          <span style={{ fontFamily: fs, fontWeight: 700, fontSize: 20, color: C.inkDark }}>비밀번호 재설정</span>
+          <span style={{ fontSize: 11, color: C.inkMid }}>이메일·이름·생년월일을 확인하고 새 비밀번호를 설정하세요</span>
         </div>
 
-        {password ? (
+        {done ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ fontSize: 11, color: C.inkMid, fontWeight: 700 }}>비밀번호</div>
-            <div style={{ fontSize: 13, color: C.inkDark, background: "rgba(58,96,48,0.14)", border: "1px solid #245020", padding: "8px 10px" }}>
-              {password}
+            <div style={{ fontSize: 12, color: "#245020", background: "rgba(58,96,48,0.14)", border: "1px solid #245020", padding: "8px 10px" }}>
+              ✅ 비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요.
             </div>
             <Link to="/login" style={{ textAlign: "center", fontSize: 12, color: C.active, fontWeight: 700, textDecoration: "none", marginTop: 6 }}>
               로그인하러 가기 →
@@ -67,6 +71,16 @@ export default function FindPasswordPage() {
               <Input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} min="1900-01-01" max="2099-12-31" style={{ width: "100%" }} />
             </label>
 
+            <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 11, color: C.inkMid, fontWeight: 700 }}>새 비밀번호</span>
+              <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="새 비밀번호를 입력하세요" style={{ width: "100%" }} />
+            </label>
+
+            <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 11, color: C.inkMid, fontWeight: 700 }}>새 비밀번호 확인</span>
+              <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="새 비밀번호를 다시 입력하세요" style={{ width: "100%" }} />
+            </label>
+
             {error && (
               <div style={{ fontSize: 11, color: C.redB, background: "rgba(192,64,64,0.12)", border: `1px solid ${C.redB}`, padding: "6px 8px" }}>
                 {error}
@@ -74,7 +88,7 @@ export default function FindPasswordPage() {
             )}
 
             <Button type="submit" variant="green" block disabled={loading} style={{ marginTop: 6 }}>
-              {loading ? "찾는 중..." : "비밀번호 찾기"}
+              {loading ? "변경하는 중..." : "비밀번호 변경하기"}
             </Button>
           </form>
         )}

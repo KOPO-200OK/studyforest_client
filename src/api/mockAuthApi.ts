@@ -146,8 +146,4 @@ export const mockAuthApi = {
       newPassword,
     });
   },
-
-  async findPassword(_email: string, _name: string, _birthDate: string): Promise<string> {
-    throw new Error("현재 백엔드는 비밀번호 조회를 지원하지 않습니다. 비밀번호 재설정 API로 화면 로직을 바꿔야 합니다");
-  },
 };
