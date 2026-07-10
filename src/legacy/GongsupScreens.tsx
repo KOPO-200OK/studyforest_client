@@ -152,6 +152,8 @@ import { isJangwonWinner } from "@/data/jangwonWinners";
 import { CHARACTERS } from "@/data/characters";
 import { getDisabledSeatIds } from "@/data/seatConfig";
 import { useSidebar } from "@/context/SidebarContext";
+import { ApiError } from "@/api/client";
+import { studySpaceApi, type StudyChannel, type StudyRoom } from "@/api/studySpaceApi";
 
 // 스프라이트 시트: 4열 × 2행 배치
 const SHEET_COLS = 4;
@@ -564,7 +566,7 @@ export function HomePage({ todos, remove, add, aiInput, setAiInput }: {
 
 /* ── Seat system ──────────────────────────────────────────────── */
 type SeatStatus = "available" | "selected" | "occupied" | "disabled";
-interface Seat { id: number; x: number; y: number; zone: string; status: SeatStatus; }
+interface Seat { id: number; serverId?: number; x: number; y: number; zone: string; status: SeatStatus; }
 
 const MAP_W = 1022;
 const MAP_H = 620;
@@ -736,6 +738,20 @@ const SEAT_STYLE: Record<SeatStatus, { bg: string; border: string; text: string;
   disabled:  { bg: "rgba(202, 0, 0, 0.65)",   border: "#222222", text: "#686868",  glow: "none" },
 };
 
+function getSeatErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    const messages: Record<string, string> = {
+      SEAT_ALREADY_OCCUPIED: "방금 다른 사용자가 선택한 좌석입니다.",
+      MEMBER_ALREADY_SEATED: "이미 이용 중인 좌석이 있습니다.",
+      SEAT_NOT_IN_CHANNEL_ROOM: "현재 채널에서 선택할 수 없는 좌석입니다.",
+      SEAT_NOT_FOUND: "이용 가능한 좌석을 찾을 수 없습니다.",
+      ACTIVE_OCCUPANCY_NOT_FOUND: "현재 이용 중인 좌석 정보가 없습니다.",
+    };
+    return messages[error.code] ?? error.message;
+  }
+  return error instanceof Error ? error.message : "좌석 정보를 처리하지 못했습니다.";
+}
+
 function SeatMarker({ seat, isSelected, onClick }: { seat: Seat; isSelected: boolean; onClick: (id: number) => void }) {
   const status = isSelected ? "selected" : seat.status;
   const s = SEAT_STYLE[status];
@@ -776,7 +792,9 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   const nickname = mockAuthApi.getCurrentAccount()?.nickname ?? "학습자";
   const { collapsed: sidebarCollapsed } = useSidebar();
   const [mapId, setMapId] = useState<MapId>("forest");
-  const [channel, setChannel] = useState(1);
+  const [rooms, setRooms] = useState<StudyRoom[]>([]);
+  const [channels, setChannels] = useState<StudyChannel[]>([]);
+  const [channel, setChannel] = useState<StudyChannel | null>(null);
   const [seats, setSeats] = useState<Seat[]>(() => makeSeats(MAPS.forest.seats));
   const [showSeats, setShowSeats] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -785,17 +803,66 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   const [showCharSelect, setShowCharSelect] = useState(false);
   const [showNotice, setShowNotice] = useState(false);
   const [todoOpen, setTodoOpen] = useState(true);
+  const [studySessionId, setStudySessionId] = useState<number | null>(null);
+  const [seatLoading, setSeatLoading] = useState(false);
+  const [seatActionLoading, setSeatActionLoading] = useState(false);
+  const [seatError, setSeatError] = useState<string | null>(null);
 
   const currentMap = MAPS[mapId];
 
+  const mapNoById: Record<MapId, number> = { forest: 1, seodang: 2, cafe: 3, sa: 4 };
+
+  useEffect(() => {
+    studySpaceApi.getRooms()
+      .then(setRooms)
+      .catch(error => setSeatError(getSeatErrorMessage(error)));
+  }, []);
+
+  useEffect(() => {
+    const room = rooms.find(item => item.mapNo === mapNoById[mapId]);
+    if (!room) return;
+    setSeatLoading(true);
+    setSeatError(null);
+    studySpaceApi.getChannels(room.studyRoomId)
+      .then(items => {
+        setChannels(items);
+        setChannel(items[0] ?? null);
+      })
+      .catch(error => setSeatError(getSeatErrorMessage(error)))
+      .finally(() => setSeatLoading(false));
+  }, [rooms, mapId]);
+
+  useEffect(() => {
+    if (!channel) return;
+    let cancelled = false;
+    setSeatLoading(true);
+    setSeatError(null);
+    studySpaceApi.getSeats(channel.studyChannelId)
+      .then(statuses => {
+        if (cancelled) return;
+        const statusBySeatNo = new Map(statuses.map(status => [status.seatNo, status]));
+        setSeats(MAPS[mapId].seats.map(config => {
+          const serverSeat = statusBySeatNo.get(config.id);
+          return {
+            ...config,
+            serverId: serverSeat?.seatId,
+            status: !serverSeat || !serverSeat.active ? "disabled"
+              : serverSeat.occupied ? "occupied"
+              : "available",
+          };
+        }));
+      })
+      .catch(error => !cancelled && setSeatError(getSeatErrorMessage(error)))
+      .finally(() => !cancelled && setSeatLoading(false));
+    return () => { cancelled = true; };
+  }, [channel, mapId]);
+
   function handleSelectMap(id: MapId) {
-    if (id === mapId) return;
+    if (id === mapId || studySessionId !== null) return;
     setMapId(id);
     setSeats(makeSeats(MAPS[id].seats));
-    setSeatedAt(null);
     setSelectedId(null);
     setShowSeats(false);
-    setTimerOn(false);
   }
 
   // ── 타이머 ──────────────────────────────────────────────────────
@@ -807,6 +874,17 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
     const id = setInterval(() => setTimerSecs(s => s + 1), 1000);
     return () => clearInterval(id);
   }, [timerOn]);
+
+  useEffect(() => {
+    if (studySessionId === null) return;
+    const sendHeartbeat = () => {
+      studySpaceApi.heartbeat(studySessionId)
+        .then(tick => setTimerSecs(tick.displayElapsedSeconds))
+        .catch(error => setSeatError(getSeatErrorMessage(error)));
+    };
+    const id = window.setInterval(sendHeartbeat, 30_000);
+    return () => window.clearInterval(id);
+  }, [studySessionId]);
 
   const fmtTimer = (s: number) => {
     const h = Math.floor(s / 3600);
@@ -827,20 +905,46 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
 
   const handleSeatClick = (id: number) => setSelectedId(prev => prev === id ? null : id);
 
-  const handleSit = () => {
-    if (selectedId === null) return;
-    setSeats(ss => ss.map(s => s.id === selectedId ? { ...s, status: "occupied" } : s));
-    setSeatedAt(selectedId);
-    setShowSeats(false);
-    setSelectedId(null);
-    setTimerOn(true); // 착석 시 타이머 자동 시작
+  const handleSit = async () => {
+    if (!selectedSeat?.serverId || !channel) return;
+    setSeatActionLoading(true);
+    setSeatError(null);
+    try {
+      const session = await studySpaceApi.occupySeat(channel.studyChannelId, selectedSeat.serverId);
+      setSeats(ss => ss.map(s => s.id === selectedSeat.id ? { ...s, status: "occupied" } : s));
+      setSeatedAt(selectedSeat.id);
+      setStudySessionId(session.studySessionId);
+      setTimerSecs(session.accumulatedSeconds);
+      setShowSeats(false);
+      setSelectedId(null);
+      setTimerOn(true);
+    } catch (error) {
+      setSeatError(getSeatErrorMessage(error));
+      const statuses = await studySpaceApi.getSeats(channel.studyChannelId).catch(() => null);
+      if (statuses) {
+        const occupiedIds = new Set(statuses.filter(s => s.occupied).map(s => s.seatId));
+        setSeats(ss => ss.map(s => ({ ...s, status: s.serverId && occupiedIds.has(s.serverId) ? "occupied" : s.status })));
+      }
+    } finally {
+      setSeatActionLoading(false);
+    }
   };
 
-  const handleLeave = () => {
-    if (seatedAt === null) return;
-    setSeats(ss => ss.map(s => s.id === seatedAt ? { ...s, status: "available" } : s));
-    setSeatedAt(null);
-    setTimerOn(false); // 퇴장 시 타이머 정지
+  const handleLeave = async () => {
+    if (seatedAt === null || studySessionId === null) return;
+    setSeatActionLoading(true);
+    setSeatError(null);
+    try {
+      await studySpaceApi.leaveSeat(studySessionId);
+      setSeats(ss => ss.map(s => s.id === seatedAt ? { ...s, status: "available" } : s));
+      setSeatedAt(null);
+      setStudySessionId(null);
+      setTimerOn(false);
+    } catch (error) {
+      setSeatError(getSeatErrorMessage(error));
+    } finally {
+      setSeatActionLoading(false);
+    }
   };
 
   const ZONE_COLORS: Record<string, string> = {
@@ -880,8 +984,8 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
         <Panel title="맵 · 채널" icon={<span style={{ fontSize: 13 }}>🗺️</span>} accent="linear-gradient(90deg,#162e12,#1e3e18)">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 6, marginBottom: 8 }}>
             {Object.values(MAPS).map(m => (
-              <button key={m.id} onClick={() => handleSelectMap(m.id)}
-                style={{ padding: "6px 4px", fontSize: 11, fontWeight: 700, fontFamily: ff, cursor: "pointer",
+              <button key={m.id} disabled={studySessionId !== null} onClick={() => handleSelectMap(m.id)}
+                style={{ padding: "6px 4px", fontSize: 11, fontWeight: 700, fontFamily: ff, cursor: studySessionId !== null ? "not-allowed" : "pointer",
                   background: mapId === m.id ? "linear-gradient(135deg,#3a6030,#1e4018)" : "rgba(139,94,60,0.12)",
                   color: mapId === m.id ? "#c0f0a0" : "#9a7040",
                   border: `2px solid ${mapId === m.id ? "#1a3010" : "#5a4020"}` }}>
@@ -890,16 +994,18 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
             ))}
           </div>
           <div style={{ display: "flex", gap: 6 }}>
-            {[1, 2, 3].map(ch => (
-              <button key={ch} onClick={() => setChannel(ch)}
-                style={{ flex: 1, padding: "5px 4px", fontSize: 11, fontWeight: 700, fontFamily: ff, cursor: "pointer",
-                  background: channel === ch ? "rgba(200,160,48,0.25)" : "rgba(139,94,60,0.08)",
-                  color: channel === ch ? "#f5c842" : "#7a5828",
-                  border: `1px solid ${channel === ch ? "#c8a030" : "#5a4020"}` }}>
-                {ch}채널
+            {channels.map(ch => (
+              <button key={ch.studyChannelId} disabled={studySessionId !== null} onClick={() => setChannel(ch)}
+                style={{ flex: 1, padding: "5px 4px", fontSize: 11, fontWeight: 700, fontFamily: ff, cursor: studySessionId !== null ? "not-allowed" : "pointer",
+                  background: channel?.studyChannelId === ch.studyChannelId ? "rgba(200,160,48,0.25)" : "rgba(139,94,60,0.08)",
+                  color: channel?.studyChannelId === ch.studyChannelId ? "#f5c842" : "#7a5828",
+                  border: `1px solid ${channel?.studyChannelId === ch.studyChannelId ? "#c8a030" : "#5a4020"}` }}>
+                {ch.channelNo}채널
               </button>
             ))}
           </div>
+          {seatLoading && <div style={{ marginTop: 7, fontSize: 10, color: "#7a5828", fontFamily: ff }}>좌석 정보를 불러오는 중...</div>}
+          {seatError && <div style={{ marginTop: 7, fontSize: 10, color: "#b03030", fontFamily: ff }}>{seatError}</div>}
         </Panel>
 
         {/* Seat entry panel */}
@@ -912,8 +1018,8 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
               <div style={{ fontSize: 10, color: "#7a5828", marginBottom: 10, fontFamily: ff }}>
                 구역: <strong>{seatedSeat?.zone}</strong>
               </div>
-              <button onClick={handleLeave} style={{ width: "100%", padding: "8px", fontSize: 12, fontWeight: 700, background: "linear-gradient(135deg,#8b5e3c,#6a3a1a)", color: "#f5e6c8", border: "2px solid #5a3010", boxShadow: "2px 2px 0 #3a1808", cursor: "pointer", fontFamily: ff }}>
-                🚪 퇴장하기
+              <button disabled={seatActionLoading} onClick={handleLeave} style={{ width: "100%", padding: "8px", fontSize: 12, fontWeight: 700, background: "linear-gradient(135deg,#8b5e3c,#6a3a1a)", color: "#f5e6c8", border: "2px solid #5a3010", boxShadow: "2px 2px 0 #3a1808", cursor: seatActionLoading ? "wait" : "pointer", fontFamily: ff }}>
+                {seatActionLoading ? "처리 중..." : "🚪 퇴장하기"}
               </button>
             </>
           ) : (
@@ -959,8 +1065,8 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
                 <span style={{ color: "#4a8030", fontWeight: 700 }}>빈 좌석</span>
               </div>
             </div>
-            <button onClick={handleSit} style={{ marginTop: 10, width: "100%", padding: "9px", fontSize: 13, fontWeight: 700, background: "linear-gradient(135deg,#3a6030,#1e4018)", color: "#c0f0a0", border: "2px solid #1a3010", boxShadow: "2px 3px 0 #0e2008", cursor: "pointer", fontFamily: ff }}>
-              ✅ 착석하기
+            <button disabled={seatActionLoading} onClick={handleSit} style={{ marginTop: 10, width: "100%", padding: "9px", fontSize: 13, fontWeight: 700, background: "linear-gradient(135deg,#3a6030,#1e4018)", color: "#c0f0a0", border: "2px solid #1a3010", boxShadow: "2px 3px 0 #0e2008", cursor: seatActionLoading ? "wait" : "pointer", fontFamily: ff }}>
+              {seatActionLoading ? "처리 중..." : "✅ 착석하기"}
             </button>
             <button onClick={() => setSelectedId(null)} style={{ marginTop: 6, width: "100%", padding: "6px", fontSize: 11, background: "rgba(139,94,60,0.1)", border: "1px solid #c4a060", color: "#5a3010", cursor: "pointer", fontFamily: ff }}>
               취소
@@ -1105,7 +1211,7 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
               </div>
             ))}
           </div>
-          <div style={{ marginTop: 8, fontSize: 10, color: "#7a8060", textAlign: "center", fontFamily: ff }}>총 {seats.length}명 접속 중 · {channel}채널</div>
+          <div style={{ marginTop: 8, fontSize: 10, color: "#7a8060", textAlign: "center", fontFamily: ff }}>사용 중 {seats.filter(seat => seat.status === "occupied").length}석 · {channel?.channelNo ?? "-"}채널</div>
         </Panel>
       </div>
       </div>
