@@ -11,10 +11,7 @@ export interface JangwonWinner {
   characterId: number;
 }
 
-const DEFAULT_WINNERS: JangwonWinner[] = [
-  { year: 2026, nickname: "한양생", characterId: 5 },
-  { year: 2025, nickname: "화랑도", characterId: 3 },
-];
+const DEFAULT_WINNERS: JangwonWinner[] = [];
 
 function loadWinners(): JangwonWinner[] {
   const raw = localStorage.getItem(WINNERS_KEY);
