@@ -38,12 +38,21 @@ export interface SessionTick {
   displayElapsedSeconds: number;
 }
 
+export interface ActiveParticipant {
+  memberId: number;
+  displayName: string;
+  elapsedSeconds: number;
+  running: boolean;
+}
+
 export const studySpaceApi = {
   getRooms: () => api.get<StudyRoom[]>("/study-rooms"),
   getChannels: (studyRoomId: number) =>
     api.get<StudyChannel[]>(`/study-rooms/${studyRoomId}/channels`),
   getSeats: (studyChannelId: number) =>
     api.get<SeatStatus[]>(`/study-channels/${studyChannelId}/seats`),
+  getActiveParticipants: (studyChannelId: number) =>
+    api.get<ActiveParticipant[]>(`/study-channels/${studyChannelId}/participants`),
   occupySeat: (studyChannelId: number, seatId: number, subject?: string) =>
     api.post<StudySession>(`/study-channels/${studyChannelId}/seats/${seatId}/occupancy`, { subject }),
   leaveSeat: (studySessionId: number) =>
