@@ -12,13 +12,14 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // 개발 중 /api 요청을 Spring Boot(8080)로 전달 → CORS 불필요
+      // 개발 중 /api 요청을 Spring Boot(8081)로 전달 → CORS 불필요
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8081',
         changeOrigin: true,
       },
       '/ws-studyspace': {
-        target: 'ws://localhost:8080',
+        target: 'ws://localhost:8081',
+        changeOrigin: true,
         ws: true,
       },
     },

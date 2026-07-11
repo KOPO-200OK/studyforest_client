@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, ProgressBar } from "@/components/ui";
 import { fs, ff } from "@/styles/tokens";
+import { studyApi, type StudySummaryResponse } from "@/api/studyApi";
 
 const MENU = [
   { to: "periods",      icon: "🏛️", label: "시대별 문제",  sub: "시대·주제·난이도별 풀이" },
@@ -11,8 +13,29 @@ const MENU = [
   { to: "ai-generate",  icon: "🪄", label: "AI로 문제지 만들기", sub: "AI가 즉석에서 문제 생성" },
 ];
 
+const ERA_LABEL: Record<string, string> = {
+  PREHISTORY: "선사·고조선",
+  THREE_KINGDOMS: "삼국·남북국",
+  GORYEO: "고려",
+  JOSEON: "조선",
+  MODERN: "근현대",
+};
+
 export default function QuestionBankHome() {
   const nav = useNavigate();
+  const [summary, setSummary] = useState<StudySummaryResponse | null>(null);
+  const [weakestEra, setWeakestEra] = useState<string | null>(null);
+
+  useEffect(() => {
+    studyApi.getSummary().then(setSummary).catch(() => setSummary(null));
+    studyApi.getWeaknessAnalysis()
+      .then((res) => {
+        const weakest = res.items[0];
+        if (weakest) setWeakestEra(ERA_LABEL[weakest.era] ?? weakest.era);
+      })
+      .catch(() => setWeakestEra(null));
+  }, []);
+
   return (
     <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 28, background: "linear-gradient(160deg,#1a2a14,#0e1a0a)" }}>
       <h2 style={{ fontFamily: fs, color: "#f5e6c8", fontSize: 20, marginBottom: 6 }}>📚 공숲 문제은행</h2>
@@ -29,12 +52,16 @@ export default function QuestionBankHome() {
       </div>
 
       <Card>
-        <div style={{ fontFamily: fs, fontWeight: 700, fontSize: 14, color: "#2a1808", marginBottom: 12 }}>오늘의 학습 현황</div>
-        <div style={{ fontFamily: ff, fontSize: 12, color: "#5a3010", display: "flex", flexDirection: "column", gap: 8 }}>
-          <div>오늘 푼 문제: <strong>12문제</strong> · 정답률 <strong>75%</strong></div>
-          <ProgressBar pct={75} />
-          <div>취약 시대: <strong style={{ color: "#c04040" }}>근현대</strong></div>
-        </div>
+        <div style={{ fontFamily: fs, fontWeight: 700, fontSize: 14, color: "#2a1808", marginBottom: 12 }}>누적 학습 현황</div>
+        {summary === null ? (
+          <div style={{ fontFamily: ff, fontSize: 12, color: "#9a7040" }}>불러오는 중...</div>
+        ) : (
+          <div style={{ fontFamily: ff, fontSize: 12, color: "#5a3010", display: "flex", flexDirection: "column", gap: 8 }}>
+            <div>누적 풀이: <strong>{summary.totalSolvedCount}문제</strong> · 정답률 <strong>{Math.round(summary.accuracyRate)}%</strong></div>
+            <ProgressBar pct={Math.round(summary.accuracyRate)} />
+            {weakestEra && <div>취약 시대: <strong style={{ color: "#c04040" }}>{weakestEra}</strong></div>}
+          </div>
+        )}
       </Card>
     </div>
   );
