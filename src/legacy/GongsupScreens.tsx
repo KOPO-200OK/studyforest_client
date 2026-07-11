@@ -1531,19 +1531,7 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
         {/* Online members */}
         <Panel title="지금 공부 중" icon={<BookOpen size={13} />} accent="#2a3a1a">
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {[
-              { name: "경주최씨", zone: "집중의 숲",    time: "1h 22m", color: "#f5c842" },
-              { name: "한양이씨", zone: "집현전 공터",   time: "43m",    color: "#90d070" },
-              { name: "평양박씨", zone: "세계수 광장",   time: "2h 05m", color: "#f0a0b0" },
-              { name: "전주김씨", zone: "계곡가 자유존", time: "18m",    color: "#a0c0f0" },
-            ].map((u, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11, fontFamily: ff }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#4a8030", flexShrink: 0, boxShadow: "0 0 6px rgba(74,128,48,0.8)" }} />
-                <span style={{ fontWeight: 700, color: "#2a1808" }}>{u.name}</span>
-                <span style={{ fontSize: 9, color: "#9a7040" }}>{u.zone}</span>
-                <span style={{ marginLeft: "auto", color: u.color, fontWeight: 700 }}>{u.time}</span>
-              </div>
-            ))}
+            <div style={{ fontSize: 11, color: "#7a8060", fontFamily: ff, textAlign: "center" }}>지금 공부 중인 사람이 없습니다</div>
           </div>
           <div style={{ marginTop: 8, fontSize: 10, color: "#7a8060", textAlign: "center", fontFamily: ff }}>사용 중 {seats.filter(seat => seat.status === "occupied").length}석 · {channel?.channelNo ?? "-"}채널</div>
         </Panel>
