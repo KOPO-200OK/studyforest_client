@@ -24,10 +24,11 @@ const ERA_LABEL: Record<string, string> = {
 export default function QuestionBankHome() {
   const nav = useNavigate();
   const [summary, setSummary] = useState<StudySummaryResponse | null>(null);
+  const [summaryError, setSummaryError] = useState(false);
   const [weakestEra, setWeakestEra] = useState<string | null>(null);
 
   useEffect(() => {
-    studyApi.getSummary().then(setSummary).catch(() => setSummary(null));
+    studyApi.getSummary().then(setSummary).catch(() => setSummaryError(true));
     studyApi.getWeaknessAnalysis()
       .then((res) => {
         const weakest = res.items[0];
@@ -53,7 +54,9 @@ export default function QuestionBankHome() {
 
       <Card>
         <div style={{ fontFamily: fs, fontWeight: 700, fontSize: 14, color: "#2a1808", marginBottom: 12 }}>누적 학습 현황</div>
-        {summary === null ? (
+        {summaryError ? (
+          <div style={{ fontFamily: ff, fontSize: 12, color: "#c04040" }}>학습 현황을 불러오지 못했습니다</div>
+        ) : summary === null ? (
           <div style={{ fontFamily: ff, fontSize: 12, color: "#9a7040" }}>불러오는 중...</div>
         ) : (
           <div style={{ fontFamily: ff, fontSize: 12, color: "#5a3010", display: "flex", flexDirection: "column", gap: 8 }}>

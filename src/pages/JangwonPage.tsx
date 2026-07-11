@@ -97,6 +97,11 @@ export default function JangwonPage() {
               壯元及第
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {winnersByYear.length === 0 && (
+                <div style={{ textAlign: "center", fontFamily: ff, fontSize: 12, color: C.inkMid }}>
+                  아직 장원급제한 사람이 없습니다
+                </div>
+              )}
               {winnersByYear.map((group, i) => (
                 <div key={group.year} style={{ paddingBottom: i < winnersByYear.length - 1 ? 20 : 0, borderBottom: i < winnersByYear.length - 1 ? "1px solid rgba(184,168,128,0.6)" : "none" }}>
                   <div style={{ textAlign: "center", fontFamily: ff, fontSize: 11, fontWeight: 700, color: C.inkMid, letterSpacing: "0.06em", marginBottom: 14 }}>{group.year}년 장원급제</div>
