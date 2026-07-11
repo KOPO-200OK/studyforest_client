@@ -8,6 +8,8 @@ export interface StudySummaryResponse {
   unresolvedWrongCount: number;
   submittedMockExamCount: number;
   averageMockExamScore: number;
+  todayStudySeconds: number;
+  weeklyStudySeconds: number;
 }
 
 export interface WeaknessItemResponse {

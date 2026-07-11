@@ -521,6 +521,13 @@ function Nav({ page, setPage }: { page: string; setPage: (p: string) => void }) 
   );
 }
 
+/* ── 학습 시간 포맷: 초 → "Xh Ym" ─────────────────────────────── */
+function formatStudyHours(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return `${h}h ${m}m`;
+}
+
 /* ── HOME PAGE ────────────────────────────────────────────────── */
 export function HomePage({ todos, remove, add, aiInput, setAiInput }: {
   todos: Todo[]; remove: (id: number) => void; add: (text: string) => void;
@@ -528,6 +535,19 @@ export function HomePage({ todos, remove, add, aiInput, setAiInput }: {
 }) {
   const navigate = useNavigate();
   const nickname = mockAuthApi.getCurrentAccount()?.nickname ?? "학습자";
+
+  const [studyTime, setStudyTime] = useState<{ today: number; weekly: number } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    studyApi.getSummary()
+      .then((res) => {
+        if (cancelled) return;
+        setStudyTime({ today: res.todayStudySeconds, weekly: res.weeklyStudySeconds });
+      })
+      .catch(() => { if (!cancelled) setStudyTime({ today: 0, weekly: 0 }); });
+    return () => { cancelled = true; };
+  }, []);
 
   const [aiSessionId, setAiSessionId] = useState<number | null>(null);
   const [aiAnswer, setAiAnswer] = useState<string | null>(null);
@@ -577,15 +597,15 @@ export function HomePage({ todos, remove, add, aiInput, setAiInput }: {
                     {nickname}님, 오늘도 화이팅!
                   </div>
                   <div style={{ fontSize: 12, color: "#c8a060", fontFamily: ff, marginTop: 2 }}>
-                    한양생 · 오늘 공부시간 <strong style={{ color: "#f5c842" }}>2h 34m</strong>
+                    한양생 · 오늘 공부시간 <strong style={{ color: "#f5c842" }}>{studyTime ? formatStudyHours(studyTime.today) : "-"}</strong>
                   </div>
                 </div>
               </div>
             </div>
             <div style={{ display: "flex", gap: 12 }}>
               {[
-                { label: "오늘 학습", value: "2h 34m", color: "#f5c842" },
-                { label: "이번 주", value: "14h 22m", color: "#90d070" },
+                { label: "오늘 학습", value: studyTime ? formatStudyHours(studyTime.today) : "-", color: "#f5c842" },
+                { label: "이번 주", value: studyTime ? formatStudyHours(studyTime.weekly) : "-", color: "#90d070" },
               ].map((s, i) => (
                 <div key={i} style={{ textAlign: "center", padding: "8px 16px", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(139,94,60,0.4)" }}>
                   <div style={{ fontSize: 16, fontWeight: 700, color: s.color, fontFamily: "monospace" }}>{s.value}</div>
