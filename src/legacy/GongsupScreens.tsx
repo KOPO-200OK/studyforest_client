@@ -816,18 +816,27 @@ interface MapDef {
   emoji: string;
   seats: Omit<Seat, "status">[];
   hasTimeOfDay: boolean;
+  notice?: {
+    x: number;
+    y: number;
+    labelPosition: "top" | "right";
+  };
   staticBg?: string;
   timeImages?: Record<TimeOfDay, string>;
 }
 
 const MAPS: Record<MapId, MapDef> = {
   forest:  { id: "forest",  label: "공숲",   emoji: "🌲", seats: RAW_SEATS,     hasTimeOfDay: true,
+    notice: { x: 673, y: 388, labelPosition: "top" },
     timeImages: { morning: morningImg, afternoon: afternoonImg, evening: eveningImg } },
   seodang: { id: "seodang", label: "서당",   emoji: "📜", seats: SEODANG_SEATS, hasTimeOfDay: true,
+    notice: { x: 203, y: 100, labelPosition: "right" },
     timeImages: { morning: seodangMorningImg, afternoon: seodangAfternoonImg, evening: seodangEveningImg } },
   cafe:    { id: "cafe",    label: "카페",   emoji: "☕", seats: CAFE_SEATS,    hasTimeOfDay: true,
+    notice: { x: 500, y: 65, labelPosition: "top" },
     timeImages: { morning: cafeMorningImg, afternoon: cafeAfternoonImg, evening: cafeEveningImg } },
   sa:      { id: "sa",      label: "오피스", emoji: "🏢", seats: SA_SEATS,      hasTimeOfDay: true,
+    notice: { x: 80, y: 120, labelPosition: "top" },
     timeImages: { morning: saMorningImg, afternoon: saAfternoonImg, evening: saEveningImg } },
 };
 
@@ -1633,54 +1642,46 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
             <SeatMarker key={seat.id} seat={seat} isSelected={selectedId === seat.id} onClick={handleSeatClick} />
           ))}
 
-          {/* 게시판 — 12번 좌석 위 안내판, 클릭하면 공지사항 표시 (공숲 맵에만 존재) */}
-          {mapId === "forest" && (
+          {/* 맵별 공지 대상 위치 — 좌표와 라벨 방향은 MAPS 설정에서 관리 */}
+          {currentMap.notice && (
             <div
+              role="button"
+              tabIndex={0}
               onClick={() => setShowNotice(true)}
+              onKeyDown={event => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setShowNotice(true);
+                }
+              }}
               title="클릭하여 공지사항 보기"
-              style={{ position: "absolute", left: `${(680 / MAP_W) * 100}%`, top: `${(388 / MAP_H) * 100}%`, transform: "translate(-50%, -50%)", zIndex: 22, width: 46, height: 34, cursor: "pointer" }}
+              aria-label={`${currentMap.label} 공지사항 보기`}
+              style={{
+                position: "absolute",
+                left: `${(currentMap.notice.x / MAP_W) * 100}%`,
+                top: `${(currentMap.notice.y / MAP_H) * 100}%`,
+                transform: "translate(-50%, -50%)",
+                zIndex: 22,
+                width: 46,
+                height: 34,
+                cursor: "pointer",
+              }}
             >
-              <div style={{ position: "absolute", top: -22, left: "50%", transform: "translateX(-50%)", background: "#c04040", color: "#fff", fontSize: 9, fontWeight: 700, padding: "2px 7px", whiteSpace: "nowrap", border: "1px solid #7a1010", boxShadow: "1px 1px 0 #4a0808", animation: "noticeBlink 1.4s ease-in-out infinite" }}>
-                👆 클릭
-              </div>
-            </div>
-          )}
-
-          {/* 게시판 — 서당 훈장님 머리 위, 클릭하면 공지사항 표시 (서당 맵에만 존재) */}
-          {mapId === "seodang" && (
-            <div
-              onClick={() => setShowNotice(true)}
-              title="클릭하여 공지사항 보기"
-              style={{ position: "absolute", left: `${(512 / MAP_W) * 100}%`, top: `${(150 / MAP_H) * 100}%`, transform: "translate(-50%, -50%)", zIndex: 22, width: 46, height: 34, cursor: "pointer" }}
-            >
-              {/* 위쪽 "誠敬" 현판과 겹치지 않도록 라벨을 옆(오른쪽)에 배치 */}
-              <div style={{ position: "absolute", top: "50%", left: "calc(100% + 6px)", transform: "translateY(-50%)", background: "#c04040", color: "#fff", fontSize: 9, fontWeight: 700, padding: "2px 7px", whiteSpace: "nowrap", border: "1px solid #7a1010", boxShadow: "1px 1px 0 #4a0808", animation: "noticeBlink 1.4s ease-in-out infinite" }}>
-                👆 클릭
-              </div>
-            </div>
-          )}
-
-          {/* 게시판 — 카페 메뉴판(칠판 3개), 클릭하면 공지사항 표시 (카페 맵에만 존재) */}
-          {mapId === "cafe" && (
-            <div
-              onClick={() => setShowNotice(true)}
-              title="클릭하여 공지사항 보기"
-              style={{ position: "absolute", left: `${(515 / MAP_W) * 100}%`, top: `${(52 / MAP_H) * 100}%`, transform: "translate(-50%, -50%)", zIndex: 22, width: 260, height: 50, cursor: "pointer" }}
-            >
-              <div style={{ position: "absolute", top: -22, left: "50%", transform: "translateX(-50%)", background: "#c04040", color: "#fff", fontSize: 9, fontWeight: 700, padding: "2px 7px", whiteSpace: "nowrap", border: "1px solid #7a1010", boxShadow: "1px 1px 0 #4a0808", animation: "noticeBlink 1.4s ease-in-out infinite" }}>
-                👆 클릭
-              </div>
-            </div>
-          )}
-
-          {/* 게시판 — 오피스 중앙 칠판(SALES OVERVIEW), 클릭하면 공지사항 표시 (오피스 맵에만 존재) */}
-          {mapId === "sa" && (
-            <div
-              onClick={() => setShowNotice(true)}
-              title="클릭하여 공지사항 보기"
-              style={{ position: "absolute", left: `${(553 / MAP_W) * 100}%`, top: `${(268 / MAP_H) * 100}%`, transform: "translate(-50%, -50%)", zIndex: 22, width: 150, height: 55, cursor: "pointer" }}
-            >
-              <div style={{ position: "absolute", top: -22, left: "50%", transform: "translateX(-50%)", background: "#c04040", color: "#fff", fontSize: 9, fontWeight: 700, padding: "2px 7px", whiteSpace: "nowrap", border: "1px solid #7a1010", boxShadow: "1px 1px 0 #4a0808", animation: "noticeBlink 1.4s ease-in-out infinite" }}>
+              <div style={{
+                position: "absolute",
+                top: currentMap.notice.labelPosition === "top" ? -22 : "50%",
+                left: currentMap.notice.labelPosition === "top" ? "50%" : "calc(100% + 6px)",
+                transform: currentMap.notice.labelPosition === "top" ? "translateX(-50%)" : "translateY(-50%)",
+                background: "#c04040",
+                color: "#fff",
+                fontSize: 9,
+                fontWeight: 700,
+                padding: "2px 7px",
+                whiteSpace: "nowrap",
+                border: "1px solid #7a1010",
+                boxShadow: "1px 1px 0 #4a0808",
+                animation: "noticeBlink 1.4s ease-in-out infinite",
+              }}>
                 👆 클릭
               </div>
             </div>
