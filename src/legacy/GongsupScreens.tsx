@@ -168,8 +168,8 @@ function getSeatDirection(seatId: number): number {
 
 import ProfileAvatar from "@/components/ProfileAvatar";
 import { mockAuthApi } from "@/api/mockAuthApi";
-import { mockNoticeApi } from "@/api/mockNoticeApi";
-import { isJangwonWinner } from "@/data/jangwonWinners";
+import PublicNoticeBoardModal from "@/components/PublicNoticeBoardModal";
+import { useIsJangwonWinner } from "@/hooks/useJangwonWinners";
 import { CHARACTERS } from "@/data/characters";
 import { getDisabledSeatIds } from "@/data/seatConfig";
 import { useSidebar } from "@/context/SidebarContext";
@@ -935,7 +935,15 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   todos: Todo[]; remove: (id: number) => void; add: (text: string) => void;
   char: number; setChar: (c: number) => void;
 }) {
-  const nickname = mockAuthApi.getCurrentAccount()?.nickname ?? "학습자";
+  const account = mockAuthApi.getCurrentAccount();
+  const nickname = account?.nickname ?? "학습자";
+
+  const isJangwonWinner =
+    useIsJangwonWinner(
+      account?.memberId,
+      nickname,
+    );
+
   const { collapsed: sidebarCollapsed } = useSidebar();
   const [mapId, setMapId] = useState<MapId>("forest");
   const [rooms, setRooms] = useState<StudyRoom[]>([]);
@@ -1812,7 +1820,13 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
           )}
 
           {/* 공지사항 모달 */}
-          {showNotice && <NoticeBoardModal onClose={() => setShowNotice(false)} />}
+          {showNotice && (
+            <PublicNoticeBoardModal
+              onClose={() =>
+                setShowNotice(false)
+              }
+            />
+          )}
 
           {/* Other occupants — 공개 프로필은 캐릭터만 표시 */}
           {otherOccupiedSeats.map(seat => (
@@ -1834,7 +1848,7 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
               {/* 닉네임 — 캐릭터 이미지 높이와 무관하게 좌석 좌표 바로 아래 고정 */}
               <div style={{ position: "absolute", left: `${(seatedSeat.x / MAP_W) * 100}%`, top: `${(seatedSeat.y / MAP_H) * 100}%`, transform: "translate(-50%, 2px)", zIndex: 25, textAlign: "center", pointerEvents: "none" }}>
                 <span style={{ background: "rgba(16,8,2,0.88)", color: "#f5e6c8", fontSize: 9, padding: "2px 7px", border: "1px solid #8b5e3c", whiteSpace: "nowrap", fontFamily: ff, fontWeight: 700, boxShadow: "1px 1px 0 #3a1808" }}>
-                  {isJangwonWinner(nickname) && "👑 "}{nickname}
+                  {isJangwonWinner && "👑 "}{nickname}
                 </span>
               </div>
             </>
@@ -1859,7 +1873,7 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
               </div>
               <div>
                 <div style={{ fontFamily: fs, fontWeight: 700, fontSize: 13, color: "#2a1808" }}>
-                  {isJangwonWinner(nickname) && "👑 "}{nickname}
+                  {isJangwonWinner && "👑 "}{nickname}
                 </div>
                 <div style={{ fontSize: 9, color: "#9a7040", fontFamily: ff, marginTop: 2 }}>캐릭터 클릭하여 변경</div>
                 <div style={{ fontSize: 10, marginTop: 3, color: "#7a5828", fontFamily: ff }}>⏱ 오늘 <strong style={{ color: "#c04040" }}>{formatStudyHours(todayStudySeconds)}</strong></div>
@@ -2102,40 +2116,3 @@ function CharSelectModal({ current, onSelect, onClose }: {
   );
 }
 
-/* ── 공지사항 게시판 모달 ─────────────────────────────────────── */
-function NoticeBoardModal({ onClose }: { onClose: () => void }) {
-  const notices = mockNoticeApi.listNotices();
-  return (
-    <>
-      <div onClick={onClose} style={{ position: "absolute", inset: 0, zIndex: 40, background: "rgba(0,0,0,0.62)" }} />
-      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 50,
-        background: "linear-gradient(160deg,#fdf4db,#eedda0)", border: "3px solid #9a6a30",
-        boxShadow: "4px 5px 0 #5a3a08, 0 16px 48px rgba(0,0,0,0.75)", padding: "22px 24px", width: 400, maxHeight: "72vh", overflowY: "auto" }}>
-
-        <div style={{ fontFamily: fs, fontWeight: 700, fontSize: 15, color: "#2a1808", marginBottom: 16, textAlign: "center" }}>
-          📌 공지사항
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {notices.length === 0 && (
-            <div style={{ textAlign: "center", fontSize: 12, color: "#9a7040", fontFamily: ff, padding: "16px 0" }}>등록된 공지사항이 없습니다</div>
-          )}
-          {notices.map((n) => (
-            <div key={n.id} style={{ padding: "10px 12px", background: "rgba(139,94,60,0.08)", border: "1px solid #c4a060" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-                <span style={{ fontFamily: ff, fontWeight: 700, fontSize: 13, color: "#2a1808" }}>{n.title}</span>
-                <span style={{ fontFamily: ff, fontSize: 10, color: "#9a7040" }}>{n.date}</span>
-              </div>
-              <div style={{ fontFamily: ff, fontSize: 12, color: "#5a3010", lineHeight: 1.5 }}>{n.body}</div>
-            </div>
-          ))}
-        </div>
-
-        <button onClick={onClose} style={{ marginTop: 16, width: "100%", padding: "8px", fontSize: 11, fontWeight: 700,
-          background: "rgba(139,94,60,0.1)", border: "1px solid #c4a060", color: "#5a3010", cursor: "pointer", fontFamily: ff }}>
-          닫기
-        </button>
-      </div>
-    </>
-  );
-}

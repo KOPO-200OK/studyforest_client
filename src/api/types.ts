@@ -1,47 +1,98 @@
 // ============================================================
-// 백엔드 DTO 응답 타입 — 백엔드 공통 설계 규칙 5.1 네이밍 준수
-//   목록: {Domain}SummaryResponse / 상세: {Domain}DetailResponse
-// 테이블 규칙 3.1: question_option (option 단독명 금지 → question_option)
+// 문제은행과 모의고사 화면에서 사용하는 프론트 공통 타입
 // ============================================================
 
-export type ExamLevel = "BASIC" | "ADVANCED";
-export type Difficulty = "EASY" | "NORMAL" | "HARD";
-export type PeriodCode = "PREHISTORY" | "THREE_KINGDOMS" | "GORYEO" | "JOSEON" | "MODERN";
-export type SolveType = "PERIOD" | "RANDOM" | "MOCK" | "WRONG_RETRY";
+export type ExamLevel =
+  | "BASIC"
+  | "ADVANCED";
 
-/** question_option 행 (구 question_choice) */
+export type Difficulty =
+  | "EASY"
+  | "NORMAL"
+  | "HARD";
+
+export type PeriodCode =
+  | "PREHISTORY"
+  | "THREE_KINGDOMS"
+  | "GORYEO"
+  | "JOSEON"
+  | "MODERN";
+
+export type SolveType =
+  | "PERIOD"
+  | "RANDOM"
+  | "MOCK"
+  | "WRONG_RETRY";
+
+export type MockExamStatus =
+  | "IN_PROGRESS"
+  | "SUBMITTED";
+
+/**
+ * 문제 보기
+ */
 export interface QuestionOptionResponse {
   questionOptionId: number;
   optionNo: number;
   optionContent: string;
-  /** 채점 전 목록/상세 응답에는 내려주지 않음 (정답 노출 방지) */
+
+  /**
+   * 일반 문제 조회에서는 정답 노출 방지를 위해
+   * 값이 내려오지 않습니다.
+   */
   isCorrect?: boolean;
+
   optionExplanation?: string | null;
 }
 
-/** 목록용 요약 응답 */
+/**
+ * 문제 목록용 요약 응답
+ */
 export interface QuestionSummaryResponse {
   questionId: number;
+
+  examRound: number;
+  qNo: number;
+
+  era: string;
+  category: string;
+  point: number;
+
   periodCode: PeriodCode;
   topicName: string;
   difficulty: Difficulty;
   examLevel: ExamLevel;
-  /** 목록 미리보기용 앞부분 */
+
   questionPreview: string;
 }
 
-/** 상세 응답 (풀이 화면) */
+/**
+ * 문제 상세 응답
+ */
 export interface QuestionDetailResponse {
   questionId: number;
+
+  examRound: number;
+  qNo: number;
+
+  era: string;
+  category: string;
+  point: number;
+
   periodCode: PeriodCode;
-  topicId: number;
-  questionContent: string;
+  topicName: string;
   difficulty: Difficulty;
   examLevel: ExamLevel;
+
+  questionContent: string;
+  passage?: string | null;
+
   options: QuestionOptionResponse[];
 }
 
-/** 채점 응답 */
+/**
+ * 일반 문제 채점 응답
+ */
 export interface SolveResultResponse {
   isCorrect: boolean;
   correctOptionId: number;
@@ -49,31 +100,92 @@ export interface SolveResultResponse {
   solveRecordId: number;
 }
 
-/** 오답노트 요약 응답 */
+/**
+ * 오답노트 요약 응답
+ */
 export interface WrongAnswerSummaryResponse {
   wrongAnswerId: number;
   question: QuestionSummaryResponse;
   wrongCount: number;
   isResolved: boolean;
-  createdAt: string; // ISO (LocalDateTime)
+  lastSelectedAnswer?: number;
+  correctAnswer?: number;
+  createdAt: string;
 }
 
-/** 모의고사 응답 */
+/**
+ * 모의고사 공통 응답
+ */
 export interface MockExamResponse {
   mockExamId: number;
   title: string;
+
   examLevel: ExamLevel;
   totalCount: number;
+
+  status: MockExamStatus;
+
+  startedAt: string;
+  submittedAt?: string | null;
+}
+
+/**
+ * 모의고사 응시 화면 응답
+ */
+export interface MockExamDetailResponse
+  extends MockExamResponse {
+  questions: QuestionDetailResponse[];
+
+  /**
+   * 문제 ID를 키로 사용하는 저장 답안입니다.
+   *
+   * 예:
+   * {
+   *   57001: 2,
+   *   57002: 4
+   * }
+   */
+  selectedAnswers: Record<number, number>;
+}
+
+/**
+ * 모의고사 문제별 채점 결과
+ */
+export interface MockExamAnswerResultResponse {
+  questionId: number;
+  questionOrder: number;
+
+  selectedOptionId: number;
+  correctOptionId: number;
+
+  isCorrect: boolean;
+}
+
+/**
+ * 모의고사 최종 결과
+ */
+export interface MockExamResultResponse
+  extends MockExamResponse {
+  correctCount: number;
+  score: number;
+
+  submittedAt: string;
+
+  answers: MockExamAnswerResultResponse[];
+}
+
+/**
+ * 모의고사 목록 응답
+ */
+export interface MockExamSummaryResponse
+  extends MockExamResponse {
   correctCount?: number;
   score?: number;
-  status: "IN_PROGRESS" | "SUBMITTED";
 }
 
-export interface MockExamDetailResponse extends MockExamResponse {
-  questions: QuestionDetailResponse[];
-}
-
-/** Spring Data Page 응답 (페이지 0부터 시작 — 규칙 4.5) */
+/**
+ * Spring 페이지 응답
+ */
 export interface Page<T> {
   content: T[];
   totalElements: number;
@@ -82,11 +194,17 @@ export interface Page<T> {
   size: number;
 }
 
-/** AI 질의응답 */
+/**
+ * AI 채팅 세션
+ */
 export interface AiChatSessionResponse {
   aiChatSessionId: number;
   title: string;
 }
+
+/**
+ * AI 채팅 메시지
+ */
 export interface AiChatMessageResponse {
   aiChatMessageId: number;
   senderType: "USER" | "AI";
