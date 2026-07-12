@@ -173,7 +173,6 @@ import { mockAuthApi } from "@/api/mockAuthApi";
 import PublicNoticeBoardModal from "@/components/PublicNoticeBoardModal";
 import { useIsJangwonWinner } from "@/hooks/useJangwonWinners";
 import { CHARACTERS } from "@/data/characters";
-import { getDisabledSeatIds } from "@/data/seatConfig";
 import { useSidebar } from "@/context/SidebarContext";
 import { getWrongAnswers, createChatSession, sendChatMessage } from "@/api/questionApi";
 import { studyApi } from "@/api/studyApi";
@@ -820,14 +819,25 @@ export const SA_SEATS: Omit<Seat, "status">[] = [
 // pre-occupied seats for visual context
 const OCCUPIED_IDS = new Set<number>([]);
 
-function makeSeats(rawSeats: Omit<Seat, "status">[]): Seat[] {
-  const disabledIds = new Set(getDisabledSeatIds());
-  return rawSeats.map(s => ({
-    ...s,
-    status: disabledIds.has(s.id) ? "disabled"
-          : OCCUPIED_IDS.has(s.id) ? "occupied"
+function makeSeats(
+  rawSeats: Omit<Seat, "status">[],
+): Seat[] {
+  return rawSeats.map(
+    (seat) => ({
+      ...seat,
+
+      /**
+       * 실제 활성화·점유 상태는
+       * getSeats API 응답으로 곧바로 교체됩니다.
+       */
+      status:
+        OCCUPIED_IDS.has(
+          seat.id,
+        )
+          ? "occupied"
           : "available",
-  }));
+    }),
+  );
 }
 
 export type MapId = "forest" | "seodang" | "cafe" | "sa";
@@ -2041,18 +2051,70 @@ function CharSelectModal({ current, onSelect, onClose }: {
 }) {
   const [selected, setSelected] = useState(current);
   const [nickname, setNickname] = useState(() => mockAuthApi.getCurrentAccount()?.nickname ?? "");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] =
+    useState<string | null>(
+      null,
+  );
 
-  function handleConfirm() {
-    if (!nickname.trim()) {
-      setError("닉네임을 입력해주세요");
-      return;
-    }
-    const email = mockAuthApi.getCurrentEmail();
-    if (email) void mockAuthApi.setProfile(email, { nickname: nickname.trim(), characterId: selected });
-    onSelect(selected);
-    onClose();
+const [saving, setSaving] =
+  useState(false);
+
+  async function handleConfirm() {
+  if (
+    !nickname.trim()
+  ) {
+    setError(
+      "닉네임을 입력해주세요",
+    );
+
+    return;
   }
+
+  const email =
+    mockAuthApi
+      .getCurrentEmail();
+
+  if (!email) {
+    setError(
+      "로그인이 필요합니다",
+    );
+
+    return;
+  }
+
+  setSaving(true);
+  setError(null);
+
+  try {
+    await mockAuthApi.setProfile(
+      email,
+      {
+        nickname:
+          nickname.trim(),
+
+        characterId:
+          selected,
+      },
+    );
+
+    onSelect(
+      selected,
+    );
+
+    onClose();
+  } catch (
+    requestError
+  ) {
+    setError(
+      requestError
+        instanceof Error
+        ? requestError.message
+        : "프로필 저장에 실패했습니다",
+    );
+  } finally {
+    setSaving(false);
+  }
+}
 
   return (
     <>
@@ -2108,7 +2170,7 @@ function CharSelectModal({ current, onSelect, onClose }: {
             background: "rgba(139,94,60,0.1)", border: "1px solid #c4a060", color: "#5a3010", cursor: "pointer", fontFamily: ff }}>
             취소
           </button>
-          <button onClick={handleConfirm} style={{ flex: 1, padding: "8px", fontSize: 11, fontWeight: 700,
+          <button disabled={saving} onClick={() => void handleConfirm()} style={{ flex: 1, padding: "8px", fontSize: 11, fontWeight: 700,
             background: "linear-gradient(135deg,#3a6030,#245020)", border: "2px solid #1a3010", color: "#c0f0a0", cursor: "pointer", fontFamily: ff }}>
             저장하기
           </button>

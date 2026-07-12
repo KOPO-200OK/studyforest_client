@@ -2,8 +2,14 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button, Card, Input } from "@/components/ui";
 import { C, ff, fs } from "@/styles/tokens";
-import { mockAuthApi } from "@/api/mockAuthApi";
 import logoImg from "@/imports/rogo/rogo.png";
+
+export interface PendingSignupData {
+  email: string;
+  password: string;
+  name: string;
+  birthDate: string;
+}
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -15,27 +21,60 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!email || !password || !confirmPassword || !name || !birthDate) {
-      setError("모든 항목을 입력해주세요");
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError("비밀번호가 일치하지 않습니다");
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      await mockAuthApi.signup(email, password, name, birthDate);
-      navigate("/select-character", { replace: true, state: { email } });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "회원가입에 실패했습니다");
-    } finally {
-      setLoading(false);
-    }
+  function handleSubmit(
+  event: FormEvent,
+) {
+  event.preventDefault();
+
+  if (
+    !email ||
+    !password ||
+    !confirmPassword ||
+    !name ||
+    !birthDate
+  ) {
+    setError(
+      "모든 항목을 입력해주세요",
+    );
+
+    return;
   }
+
+  if (
+    password !==
+    confirmPassword
+  ) {
+    setError(
+      "비밀번호가 일치하지 않습니다",
+    );
+
+    return;
+  }
+
+  setError(null);
+
+  const pendingSignup:
+    PendingSignupData = {
+      email:
+        email.trim(),
+
+      password,
+
+      name:
+        name.trim(),
+
+      birthDate,
+    };
+
+  navigate(
+    "/select-character",
+    {
+      state: {
+        pendingSignup,
+      },
+    },
+  );
+}
 
   return (
     <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.pageBg, fontFamily: ff }}>
