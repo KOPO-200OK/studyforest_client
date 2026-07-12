@@ -42,14 +42,16 @@ const SPRITE_SHEETS: Partial<Record<number, string>> = {
 // (일부 캐릭터는 4번 방향 원본이 없어 비워둠 — 어떤 좌석도 4번을 쓰지 않아 문제없음)
 
 // 1. 선사시대 남
-import c1d1 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_1.png";
-import c1d2 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_2.png";
-import c1d3 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_3.png";
-import c1d4 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_4.png";
-import c1d5 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_5.png";
-import c1d6 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_6.png";
-import c1d7 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_7.png";
-import c1d8 from "@/imports/character_cuts_outer_only_all/prehistoric_male/trimmed/석기_남_8.png";
+// trimmed/ 폴더의 1~8번은 방향별 컷이 아니라 집필 동작 프레임이라 각도가 어긋남 —
+// 다른 캐릭터와 같은 방식으로 8방향이 맞게 그려진 원본(0~7번, prehistoric_male 루트)을 사용
+import c1d1 from "@/imports/character_cuts_outer_only_all/prehistoric_male/석기_남_0.png";
+import c1d2 from "@/imports/character_cuts_outer_only_all/prehistoric_male/석기_남_1.png";
+import c1d3 from "@/imports/character_cuts_outer_only_all/prehistoric_male/석기_남_2.png";
+import c1d4 from "@/imports/character_cuts_outer_only_all/prehistoric_male/석기_남_3.png";
+import c1d5 from "@/imports/character_cuts_outer_only_all/prehistoric_male/석기_남_4.png";
+import c1d6 from "@/imports/character_cuts_outer_only_all/prehistoric_male/석기_남_5.png";
+import c1d7 from "@/imports/character_cuts_outer_only_all/prehistoric_male/석기_남_6.png";
+import c1d8 from "@/imports/character_cuts_outer_only_all/prehistoric_male/석기_남_7.png";
 
 // 2. 선사시대 여
 import c2d1 from "@/imports/character_cuts_outer_only_all/prehistoric_female/trimmed/석기_여_1.png";

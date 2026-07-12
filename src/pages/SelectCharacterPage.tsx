@@ -15,8 +15,8 @@ export default function SelectCharacterPage() {
   const location = useLocation();
   const email = (location.state as { email?: string } | null)?.email;
 
-  const [step, setStep] = useState<Step>("gender");
-  const [gender, setGender] = useState<Gender | null>(null);
+  const [step, setStep] = useState<Step>("character");
+  const [gender, setGender] = useState<Gender | null>("남");
   const [characterId, setCharacterId] = useState<number | null>(null);
   const [nickname, setNickname] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +53,7 @@ export default function SelectCharacterPage() {
     }
   }
 
-  const genderChars = gender ? CHARACTERS.filter((c) => c.gender === gender) : [];
+  const genderChars = gender ? CHARACTERS.filter((c) => c.gender === "남") : [];
 
   return (
     <div style={{ minHeight: "100vh", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: ff, padding: "32px 16px", overflow: "hidden" }}>
@@ -74,27 +74,18 @@ export default function SelectCharacterPage() {
 
         {step === "gender" && (
           <div style={{ display: "flex", gap: 12 }}>
-            {(["남", "여"] as Gender[]).map((g) => {
-              const isMale = g === "남";
-              const bg = isMale ? C.blue : C.red;
-              const border = isMale ? C.blueB : C.redB;
-              const text = isMale ? C.blueTx : C.redTx;
-              return (
-                <button
-                  key={g}
-                  type="button"
-                  onClick={() => chooseGender(g)}
-                  style={{
-                    flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
-                    padding: "28px 12px", cursor: "pointer", fontSize: 15, fontWeight: 700, fontFamily: ff,
-                    background: bg, border: `2px solid ${border}`, color: text,
-                  }}
-                >
-                  <span style={{ fontSize: 32 }}>{isMale ? "♂" : "♀"}</span>
-                  {isMale ? "남성" : "여성"}
-                </button>
-              );
-            })}
+            <button
+              type="button"
+              onClick={() => chooseGender("남")}
+              style={{
+                flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+                padding: "28px 12px", cursor: "pointer", fontSize: 15, fontWeight: 700, fontFamily: ff,
+                background: C.blue, border: `2px solid ${C.blueB}`, color: C.blueTx,
+              }}
+            >
+              <span style={{ fontSize: 32 }}>♂</span>
+              남성
+            </button>
           </div>
         )}
 
