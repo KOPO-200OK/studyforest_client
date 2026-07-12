@@ -176,7 +176,7 @@ import { useSidebar } from "@/context/SidebarContext";
 import { getWrongAnswers, createChatSession, sendChatMessage } from "@/api/questionApi";
 import { studyApi } from "@/api/studyApi";
 import { ApiError } from "@/api/client";
-import { studySpaceApi, type StudyChannel, type StudyRoom } from "@/api/studySpaceApi";
+import { studySpaceApi, type ActiveParticipant, type ActiveStudySession, type StudyChannel, type StudyRoom } from "@/api/studySpaceApi";
 import { connectStudySpaceSocket, type SeatEvent } from "@/api/studySpaceSocket";
 import { voiceApi, type AvailableVoiceRoomResponse, type VoiceParticipantResponse } from "@/api/voiceApi";
 import { OfficeVoiceMeshClient } from "@/voice/OfficeVoiceMeshClient";
@@ -950,6 +950,12 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   const [showNotice, setShowNotice] = useState(false);
   const [todoOpen, setTodoOpen] = useState(true);
   const [studySessionId, setStudySessionId] = useState<number | null>(null);
+  const [restoredSession, setRestoredSession] = useState<ActiveStudySession | null>(null);
+  const [activeParticipants, setActiveParticipants] = useState<ActiveParticipant[]>([]);
+  const [participantsLoading, setParticipantsLoading] = useState(false);
+  const [participantsError, setParticipantsError] = useState<string | null>(null);
+  const participantsRequestRef = useRef(0);
+  const [todayStudySeconds, setTodayStudySeconds] = useState(0);
   const [seatLoading, setSeatLoading] = useState(false);
   const [seatActionLoading, setSeatActionLoading] = useState(false);
   const [seatError, setSeatError] = useState<string | null>(null);
@@ -975,6 +981,31 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   }, []);
 
   useEffect(() => {
+    studyApi.getSummary()
+      .then(summary => setTodayStudySeconds(summary.todayStudySeconds ?? 0))
+      .catch(() => setTodayStudySeconds(0));
+  }, []);
+
+  useEffect(() => {
+    studySpaceApi.getMyActiveSession()
+      .then(session => {
+        if (!session) return;
+        const restoredMapId = Object.entries(mapNoById)
+          .find(([, mapNo]) => mapNo === session.mapNo)?.[0] as MapId | undefined;
+        if (restoredMapId) {
+          setMapId(restoredMapId);
+          setSeats(makeSeats(MAPS[restoredMapId].seats));
+        }
+        setRestoredSession(session);
+        setStudySessionId(session.studySessionId);
+        setSeatedAt(session.seatNo);
+        setTimerSecs(session.elapsedSeconds);
+        setTimerOn(session.status === "RUNNING");
+      })
+      .catch(error => setSeatError(getSeatErrorMessage(error)));
+  }, []);
+
+  useEffect(() => {
     const room = rooms.find(item => item.mapNo === mapNoById[mapId]);
     if (!room) return;
     setSeatLoading(true);
@@ -982,11 +1013,14 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
     studySpaceApi.getChannels(room.studyRoomId)
       .then(items => {
         setChannels(items);
-        setChannel(items[0] ?? null);
+        const restoredChannel = restoredSession?.studyRoomId === room.studyRoomId
+          ? items.find(item => item.studyChannelId === restoredSession.studyChannelId)
+          : null;
+        setChannel(restoredChannel ?? items[0] ?? null);
       })
       .catch(error => setSeatError(getSeatErrorMessage(error)))
       .finally(() => setSeatLoading(false));
-  }, [rooms, mapId]);
+  }, [rooms, mapId, restoredSession]);
 
   useEffect(() => {
     if (!channel) return;
@@ -1015,12 +1049,56 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   }, [channel, mapId]);
 
   useEffect(() => {
+    if (!channel || studySessionId === null) {
+      participantsRequestRef.current += 1;
+      setActiveParticipants([]);
+      setParticipantsLoading(false);
+      setParticipantsError(null);
+      return;
+    }
+
+    void refreshActiveParticipants(true);
+    const refreshId = window.setInterval(() => void refreshActiveParticipants(false), 60_000);
+    return () => window.clearInterval(refreshId);
+  }, [channel, studySessionId]);
+
+  useEffect(() => {
+    if (studySessionId === null) return;
+    const tickId = window.setInterval(() => {
+      setActiveParticipants(current => current.map(participant => participant.running
+        ? { ...participant, elapsedSeconds: participant.elapsedSeconds + 1 }
+        : participant));
+    }, 1_000);
+    return () => window.clearInterval(tickId);
+  }, [studySessionId]);
+
+  async function refreshActiveParticipants(showLoading: boolean) {
+    if (!channel || studySessionId === null) return;
+    const requestId = ++participantsRequestRef.current;
+    if (showLoading) setParticipantsLoading(true);
+    try {
+      const participants = await studySpaceApi.getActiveParticipants(channel.studyChannelId);
+      if (requestId !== participantsRequestRef.current) return;
+      setActiveParticipants(participants);
+      setParticipantsError(null);
+    } catch (error) {
+      if (requestId !== participantsRequestRef.current) return;
+      setParticipantsError(error instanceof Error ? error.message : "접속자 목록을 불러오지 못했습니다");
+    } finally {
+      if (showLoading && requestId === participantsRequestRef.current) setParticipantsLoading(false);
+    }
+  }
+
+  useEffect(() => {
     if (!channel) return;
     return connectStudySpaceSocket({
       channelId: channel.studyChannelId,
       studySessionId,
       onSeatEvent: event => applySeatEvent(event),
-      onSessionTick: tick => setTimerSecs(tick.displayElapsedSeconds),
+      onSessionTick: tick => {
+        setTimerSecs(tick.displayElapsedSeconds);
+        setTimerOn(tick.status === "RUNNING");
+      },
       onConnectionChange: connected => {
         setRealtimeConnected(connected);
         if (connected) setSeatError(null);
@@ -1039,6 +1117,9 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
     if (event.type === "VACATED") {
       setSelectedId(current => current === event.seatNo ? null : current);
     }
+    if (studySessionId !== null) {
+      void refreshActiveParticipants(false);
+    }
   }
 
   function handleSelectMap(id: MapId) {
@@ -1056,7 +1137,10 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
 
   useEffect(() => {
     if (!timerOn) return;
-    const id = setInterval(() => setTimerSecs(s => s + 1), 1000);
+    const id = setInterval(() => {
+      setTimerSecs(s => s + 1);
+      setTodayStudySeconds(s => s + 1);
+    }, 1000);
     return () => clearInterval(id);
   }, [timerOn]);
 
@@ -1064,9 +1148,13 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
     if (studySessionId === null || realtimeConnected) return;
     const sendHeartbeat = () => {
       studySpaceApi.heartbeat(studySessionId)
-        .then(tick => setTimerSecs(tick.displayElapsedSeconds))
+        .then(tick => {
+          setTimerSecs(tick.displayElapsedSeconds);
+          setTimerOn(tick.status === "RUNNING");
+        })
         .catch(error => setSeatError(getSeatErrorMessage(error)));
     };
+    sendHeartbeat();
     const id = window.setInterval(sendHeartbeat, 30_000);
     return () => window.clearInterval(id);
   }, [studySessionId, realtimeConnected]);
@@ -1076,6 +1164,11 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
     const m = Math.floor((s % 3600) / 60);
     const sec = s % 60;
     return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
+  };
+  const fmtStudyTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
   };
   // ────────────────────────────────────────────────────────────────
 
@@ -1269,6 +1362,9 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
       setSeats(ss => ss.map(s => s.id === seatedAt ? { ...s, status: "available", characterId: undefined } : s));
       setSeatedAt(null);
       setStudySessionId(null);
+      setRestoredSession(null);
+      participantsRequestRef.current += 1;
+      setActiveParticipants([]);
       setTimerOn(false);
       setMicOn(false);
     } catch (error) {
@@ -1483,7 +1579,7 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
             {/* Stats row */}
             <div style={{ display:"flex", gap:0, borderTop:"1px solid #2a1e08", paddingTop:6 }}>
               {[
-                { label:"TODAY", value: fmtTimer(timerSecs + 2*3600 + 34*60).slice(0,5) },
+                { label:"TODAY", value: fmtTimer(todayStudySeconds).slice(0,5) },
                 { label:"SESSION", value: fmtTimer(timerSecs).slice(0,5) },
               ].map((s,i) => (
                 <div key={i} style={{ flex:1, textAlign:"center",
@@ -1531,9 +1627,29 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
         {/* Online members */}
         <Panel title="지금 공부 중" icon={<BookOpen size={13} />} accent="#2a3a1a">
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <div style={{ fontSize: 11, color: "#7a8060", fontFamily: ff, textAlign: "center" }}>지금 공부 중인 사람이 없습니다</div>
+            {studySessionId === null && (
+              <div style={{ fontSize: 10, color: "#9a7040", textAlign: "center", fontFamily: ff }}>채널에 입장하면 표시됩니다</div>
+            )}
+            {studySessionId !== null && participantsLoading && (
+              <div style={{ fontSize: 10, color: "#9a7040", textAlign: "center", fontFamily: ff }}>접속자 목록을 불러오는 중...</div>
+            )}
+            {studySessionId !== null && !participantsLoading && activeParticipants.length === 0 && !participantsError && (
+              <div style={{ fontSize: 10, color: "#9a7040", textAlign: "center", fontFamily: ff }}>현재 공부 중인 사람이 없습니다</div>
+            )}
+            {activeParticipants.map(participant => (
+              <div key={participant.memberId} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11, fontFamily: ff }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#4a8030", flexShrink: 0, boxShadow: "0 0 6px rgba(74,128,48,0.8)" }} />
+                <span style={{ fontWeight: 700, color: "#2a1808" }}>{participant.displayName}</span>
+                <span style={{ marginLeft: "auto", color: participant.running ? "#f5c842" : "#9a7040", fontWeight: 700 }}>
+                  {fmtStudyTime(participant.elapsedSeconds)}
+                </span>
+              </div>
+            ))}
+            {participantsError && <div style={{ fontSize: 10, color: "#b03030", textAlign: "center", fontFamily: ff }}>{participantsError}</div>}
           </div>
-          <div style={{ marginTop: 8, fontSize: 10, color: "#7a8060", textAlign: "center", fontFamily: ff }}>사용 중 {seats.filter(seat => seat.status === "occupied").length}석 · {channel?.channelNo ?? "-"}채널</div>
+          <div style={{ marginTop: 8, fontSize: 10, color: "#7a8060", textAlign: "center", fontFamily: ff }}>
+            접속 중 {activeParticipants.length}명 · {studySessionId !== null ? channel?.channelNo ?? "-" : "-"}채널
+          </div>
         </Panel>
       </div>
       </div>
@@ -1746,7 +1862,7 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
                   {isJangwonWinner(nickname) && "👑 "}{nickname}
                 </div>
                 <div style={{ fontSize: 9, color: "#9a7040", fontFamily: ff, marginTop: 2 }}>캐릭터 클릭하여 변경</div>
-                <div style={{ fontSize: 10, marginTop: 3, color: "#7a5828", fontFamily: ff }}>⏱ 오늘 <strong style={{ color: "#c04040" }}>2h 34m</strong></div>
+                <div style={{ fontSize: 10, marginTop: 3, color: "#7a5828", fontFamily: ff }}>⏱ 오늘 <strong style={{ color: "#c04040" }}>{formatStudyHours(todayStudySeconds)}</strong></div>
               </div>
             </div>
           </div>
@@ -2023,4 +2139,3 @@ function NoticeBoardModal({ onClose }: { onClose: () => void }) {
     </>
   );
 }
-
