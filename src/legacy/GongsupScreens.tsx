@@ -990,6 +990,8 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   const [seatActionLoading, setSeatActionLoading] = useState(false);
   const [seatError, setSeatError] = useState<string | null>(null);
   const [realtimeConnected, setRealtimeConnected] = useState(false);
+  const [seatRefreshVersion, setSeatRefreshVersion] = useState(0);
+  const seatEventVersionRef = useRef(0);
   const [micOn, setMicOn] = useState(false);
   const [voiceRoom, setVoiceRoom] = useState<AvailableVoiceRoomResponse | null>(null);
   const [voiceConnected, setVoiceConnected] = useState(false);
@@ -1055,11 +1057,17 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
   useEffect(() => {
     if (!channel) return;
     let cancelled = false;
+    const eventVersionAtRequest = seatEventVersionRef.current;
     setSeatLoading(true);
     setSeatError(null);
     studySpaceApi.getSeats(channel.studyChannelId)
       .then(statuses => {
         if (cancelled) return;
+        if (seatEventVersionRef.current !== eventVersionAtRequest) {
+          // 조회 중 이벤트가 들어왔으면 오래된 응답은 버리고 조용해진 뒤 다시 동기화한다.
+          setSeatRefreshVersion(version => version + 1);
+          return;
+        }
         const statusBySeatNo = new Map(statuses.map(status => [status.seatNo, status]));
         setSeats(MAPS[mapId].seats.map(config => {
           const serverSeat = statusBySeatNo.get(config.id);
@@ -1076,7 +1084,7 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
       .catch(error => !cancelled && setSeatError(getSeatErrorMessage(error)))
       .finally(() => !cancelled && setSeatLoading(false));
     return () => { cancelled = true; };
-  }, [channel, mapId]);
+  }, [channel, mapId, seatRefreshVersion]);
 
   useEffect(() => {
     if (!channel || studySessionId === null) {
@@ -1131,13 +1139,18 @@ export function StudyRoomPage({ todos, remove, add, char, setChar }: {
       },
       onConnectionChange: connected => {
         setRealtimeConnected(connected);
-        if (connected) setSeatError(null);
+        if (connected) {
+          setSeatError(null);
+          // 연결 중 놓친 VACATED 등을 서버의 최신 좌석 스냅샷으로 보정한다.
+          setSeatRefreshVersion(version => version + 1);
+        }
       },
       onError: message => setSeatError(message),
     });
   }, [channel, studySessionId]);
 
   function applySeatEvent(event: SeatEvent) {
+    seatEventVersionRef.current += 1;
     setSeats(current => current.map(seat => {
       if (seat.serverId !== event.seatId) return seat;
       if (event.type === "VACATED") return { ...seat, status: "available", characterId: undefined };
@@ -2189,4 +2202,3 @@ const [saving, setSaving] =
     </>
   );
 }
-

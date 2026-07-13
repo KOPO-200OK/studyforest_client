@@ -128,10 +128,6 @@ export function connectStudySpaceSocket(
         },
 
       onConnect: () => {
-        options.onConnectionChange(
-          true,
-        );
-
         seatSubscription =
           client.subscribe(
             `/topic/channels/${options.channelId}/seats`,
@@ -164,6 +160,15 @@ export function connectStudySpaceSocket(
           options.studySessionId !==
           null
         ) {
+          if (
+            heartbeatTimer !==
+            null
+          ) {
+            window.clearInterval(
+              heartbeatTimer,
+            );
+          }
+
           const destination =
             `/app/sessions/${options.studySessionId}`;
 
@@ -192,6 +197,12 @@ export function connectStudySpaceSocket(
               25_000,
             );
         }
+
+        // 구독을 먼저 연 뒤 연결 완료를 알려, 후속 REST 스냅샷 조회 중 발생한
+        // 좌석 이벤트를 놓치지 않도록 한다.
+        options.onConnectionChange(
+          true,
+        );
       },
 
       onWebSocketClose:
