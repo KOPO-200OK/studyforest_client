@@ -14,10 +14,14 @@ export default defineConfig({
 
   assetsInclude: ["**/*.svg", "**/*.csv"],
 
-  server: {
+  server: {    
+    host: "0.0.0.0",
     port: 5173,
-
-    proxy: {
+    allowedHosts: [
+      "studyforest.site",
+      "www.studyforest.site",
+    ],
+   proxy: {
       /**
        * 프론트에서 /api로 시작하는 요청을 보내면
        * Spring Boot 8080 포트로 전달합니다.
