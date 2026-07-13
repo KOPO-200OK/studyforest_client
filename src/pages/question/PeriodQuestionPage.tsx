@@ -5,6 +5,7 @@ import { Card, Button } from "@/components/ui";
 import { fs, ff, C } from "@/styles/tokens";
 
 import {
+  getAiQuestionExplanation,
   getQuestion,
   getQuestions,
   solveQuestion,
@@ -141,8 +142,11 @@ export default function PeriodQuestionPage() {
     }
   }
 
-  /**
+    /**
    * 사용자가 선택한 보기를 서버로 보내 채점합니다.
+   *
+   * 채점 결과는 즉시 화면에 표시하고,
+   * AI 해설은 별도 요청으로 가져옵니다.
    */
   async function handleSelect(
     question: QuestionDetailResponse,
@@ -172,6 +176,9 @@ export default function PeriodQuestionPage() {
           "PERIOD",
         );
 
+      /*
+       * 일반 채점 결과를 먼저 표시합니다.
+       */
       setResults(
         (previous) => ({
           ...previous,
@@ -180,7 +187,54 @@ export default function PeriodQuestionPage() {
             result,
         }),
       );
-    } catch (requestError) {
+
+      /*
+       * AI 해설은 채점을 막지 않도록 별도로 요청합니다.
+       */
+      void getAiQuestionExplanation(
+        question.questionId,
+        optionId,
+      )
+        .then(
+          (
+            explanationResponse,
+          ) => {
+            setResults(
+              (previous) => {
+                const current =
+                  previous[
+                    question
+                      .questionId
+                  ];
+
+                if (!current) {
+                  return previous;
+                }
+
+                return {
+                  ...previous,
+
+                  [question.questionId]:
+                    {
+                      ...current,
+
+                      explanation:
+                        explanationResponse
+                          .answer,
+                    },
+                };
+              },
+            );
+          },
+        )
+        .catch(() => {
+          /*
+           * AI 해설 실패는 채점 결과에 영향을 주지 않습니다.
+           */
+        });
+    } catch (
+      requestError
+    ) {
       setSelected(
         (previous) => {
           const next = {

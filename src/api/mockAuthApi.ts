@@ -4,6 +4,7 @@ import {
 
 import {
   api,
+  clearAuthSession,
   tokenStore,
 } from "./client";
 
@@ -48,13 +49,13 @@ interface MemberResponse {
 interface LoginResponse {
   tokenType: string;
   accessToken: string;
-  refreshToken?: string;
+  refreshToken: string;
   member: MemberResponse;
 }
 
 function saveCurrentMember(
   member: MemberResponse,
-) {
+): void {
   localStorage.setItem(
     CURRENT_EMAIL_KEY,
     member.email,
@@ -62,7 +63,9 @@ function saveCurrentMember(
 
   localStorage.setItem(
     CURRENT_MEMBER_KEY,
-    JSON.stringify(member),
+    JSON.stringify(
+      member,
+    ),
   );
 }
 
@@ -77,49 +80,50 @@ function loadCurrentMember():
     return null;
   }
 
-  const parsed =
-    JSON.parse(
-      raw,
-    ) as Partial<MemberResponse>;
+  try {
+    const parsed =
+      JSON.parse(
+        raw,
+      ) as Partial<MemberResponse>;
 
-  if (
-    !parsed.memberId ||
-    !parsed.email ||
-    !parsed.name ||
-    !parsed.birthdate ||
-    !parsed.userRole
-  ) {
+    if (
+      !parsed.memberId ||
+      !parsed.email ||
+      !parsed.name ||
+      !parsed.birthdate ||
+      !parsed.userRole
+    ) {
+      return null;
+    }
+
+    return {
+      memberId:
+        parsed.memberId,
+
+      name:
+        parsed.name,
+
+      nickname:
+        parsed.nickname
+          ?.trim() ||
+        parsed.name,
+
+      birthdate:
+        parsed.birthdate,
+
+      email:
+        parsed.email,
+
+      userRole:
+        parsed.userRole,
+
+      characterId:
+        parsed.characterId ??
+        DEFAULT_CHARACTER_ID,
+    };
+  } catch {
     return null;
   }
-
-  return {
-    memberId:
-      parsed.memberId,
-
-    name:
-      parsed.name,
-
-    /**
-     * 기존 localStorage 데이터에 nickname이 없으면
-     * 실명으로 임시 대체합니다.
-     */
-    nickname:
-      parsed.nickname?.trim() ||
-      parsed.name,
-
-    birthdate:
-      parsed.birthdate,
-
-    email:
-      parsed.email,
-
-    userRole:
-      parsed.userRole,
-
-    characterId:
-      parsed.characterId ??
-      DEFAULT_CHARACTER_ID,
-  };
 }
 
 function toAccount(
@@ -138,24 +142,28 @@ function toAccount(
     birthDate:
       member.birthdate,
 
+    nickname:
+      member.nickname
+        ?.trim() ||
+      member.name,
+
+    characterId:
+      member.characterId ??
+      DEFAULT_CHARACTER_ID,
+
     userRole:
       member.userRole,
 
     isAdmin:
       member.userRole ===
       "ADMIN",
-
-    nickname:
-      member.nickname?.trim() ||
-      member.name,
-
-    characterId:
-      member.characterId ??
-      DEFAULT_CHARACTER_ID,
   };
 }
 
 export const mockAuthApi = {
+  /**
+   * 로그인 후 Access Token과 Refresh Token을 모두 저장합니다.
+   */
   async login(
     email: string,
     password: string,
@@ -164,13 +172,16 @@ export const mockAuthApi = {
       await api.post<LoginResponse>(
         "/auth/login",
         {
-          email,
+          email:
+            email.trim(),
+
           password,
         },
       );
 
-    tokenStore.set(
+    tokenStore.setTokens(
       response.accessToken,
+      response.refreshToken,
     );
 
     saveCurrentMember(
@@ -179,7 +190,7 @@ export const mockAuthApi = {
   },
 
   /**
-   * 캐릭터와 닉네임 선택이 끝난 다음 호출합니다.
+   * 닉네임과 캐릭터를 포함한 회원가입입니다.
    */
   async signup(
     email: string,
@@ -192,17 +203,28 @@ export const mockAuthApi = {
     await api.post<void>(
       "/auth/signup",
       {
-        email,
+        email:
+          email.trim(),
+
         password,
-        name,
-        nickname,
+
+        name:
+          name.trim(),
+
+        nickname:
+          nickname.trim(),
+
         birthdate:
           birthDate,
+
         characterId,
       },
     );
   },
 
+  /**
+   * 닉네임과 캐릭터를 함께 수정합니다.
+   */
   async setProfile(
     email: string,
     profile: {
@@ -216,7 +238,7 @@ export const mockAuthApi = {
     if (
       !currentMember ||
       currentMember.email !==
-      email
+        email
     ) {
       throw new Error(
         "현재 로그인한 회원 정보를 찾을 수 없습니다.",
@@ -228,7 +250,8 @@ export const mockAuthApi = {
         "/members/me/profile",
         {
           nickname:
-            profile.nickname,
+            profile.nickname
+              .trim(),
 
           characterId:
             profile.characterId,
@@ -240,6 +263,9 @@ export const mockAuthApi = {
     );
   },
 
+  /**
+   * 캐릭터만 변경합니다.
+   */
   async setCharacter(
     email: string,
     characterId: number,
@@ -250,7 +276,7 @@ export const mockAuthApi = {
     if (
       !currentMember ||
       currentMember.email !==
-      email
+        email
     ) {
       throw new Error(
         "현재 로그인한 회원 정보를 찾을 수 없습니다.",
@@ -282,25 +308,47 @@ export const mockAuthApi = {
     );
   },
 
-  logout(): void {
-    tokenStore.clear();
-
-    localStorage.removeItem(
-      CURRENT_EMAIL_KEY,
-    );
-
-    localStorage.removeItem(
-      CURRENT_MEMBER_KEY,
-    );
+  /**
+   * 서버 로그아웃을 호출합니다.
+   *
+   * 백엔드 처리:
+   * - 현재 Access Token 블랙리스트 등록
+   * - Redis Refresh Token 삭제
+   *
+   * 서버 요청 결과와 관계없이 프론트 로그인 상태는 정리합니다.
+   */
+  async logout():
+    Promise<void> {
+    try {
+      if (
+        tokenStore.getAccess() ||
+        tokenStore.getRefresh()
+      ) {
+        await api.post<void>(
+          "/auth/logout",
+        );
+      }
+    } catch {
+      /**
+       * 서버가 중단되어 있더라도 사용자는 프론트에서 로그아웃할 수 있어야 합니다.
+       */
+    } finally {
+      clearAuthSession();
+    }
   },
 
+  /**
+   * 회원탈퇴 후 프론트 로그인 상태도 제거합니다.
+   */
   async withdraw():
     Promise<void> {
-    await api.del<void>(
-      "/members/me",
-    );
-
-    mockAuthApi.logout();
+    try {
+      await api.del<void>(
+        "/members/me",
+      );
+    } finally {
+      clearAuthSession();
+    }
   },
 
   getCurrentAccount():
@@ -309,7 +357,9 @@ export const mockAuthApi = {
       loadCurrentMember();
 
     return member
-      ? toAccount(member)
+      ? toAccount(
+          member,
+        )
       : null;
   },
 
@@ -318,7 +368,8 @@ export const mockAuthApi = {
     return (
       mockAuthApi
         .getCurrentAccount()
-        ?.isAdmin === true
+        ?.isAdmin ===
+      true
     );
   },
 
@@ -351,13 +402,17 @@ export const mockAuthApi = {
       await api.post<string>(
         "/auth/find-email",
         {
-          name,
+          name:
+            name.trim(),
+
           birthdate:
             birthDate,
         },
       );
 
-    return [email];
+    return [
+      email,
+    ];
   },
 
   async resetPassword(
@@ -369,10 +424,15 @@ export const mockAuthApi = {
     await api.post<void>(
       "/auth/reset-password",
       {
-        email,
-        name,
+        email:
+          email.trim(),
+
+        name:
+          name.trim(),
+
         birthdate:
           birthDate,
+
         newPassword,
       },
     );

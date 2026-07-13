@@ -171,6 +171,7 @@ function getSeatDirection(seatId: number): number {
 import ProfileAvatar from "@/components/ProfileAvatar";
 import { mockAuthApi } from "@/api/mockAuthApi";
 import PublicNoticeBoardModal from "@/components/PublicNoticeBoardModal";
+import RecentActivityPanel from "@/components/RecentActivityPanel";
 import { useIsJangwonWinner } from "@/hooks/useJangwonWinners";
 import { CHARACTERS } from "@/data/characters";
 import { useSidebar } from "@/context/SidebarContext";
@@ -634,6 +635,15 @@ export function HomePage({ todos, remove, add, aiInput, setAiInput }: {
           <Panel title="취약 시대 분석" icon={<BarChart2 size={14} />} accent="#1a3a2a">
             <WeakEraContent />
           </Panel>
+        </div>
+
+        {/* 최근 학습 활동 */}
+        <div
+          style={{
+            marginTop: 16,
+          }}
+        >
+          <RecentActivityPanel />
         </div>
 
         {/* AI 질문 */}
