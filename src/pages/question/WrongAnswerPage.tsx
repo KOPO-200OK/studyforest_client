@@ -1,18 +1,38 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { Card, Button } from "@/components/ui";
 import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+
+import {
+  Card,
+  Button,
+} from "@/components/ui";
+
+import {
+  getAiQuestionExplanation,
   getQuestion,
   getWrongAnswer,
   getWrongAnswers,
   retryWrongAnswer,
 } from "@/api/questionApi";
+
 import type {
   QuestionDetailResponse,
   SolveResultResponse,
   WrongAnswerSummaryResponse,
 } from "@/api/types";
-import { fs, ff, C } from "@/styles/tokens";
+
+import {
+  fs,
+  ff,
+  C,
+} from "@/styles/tokens";
 
 const PAGE_SIZE = 50;
 
@@ -20,7 +40,10 @@ function getOptionLabel(
   optionNo?: number,
   optionContent?: string | null,
 ) {
-  if (typeof optionNo === "number") {
+  if (
+    typeof optionNo ===
+    "number"
+  ) {
     return `${optionNo}번`;
   }
 
@@ -32,8 +55,11 @@ function getOptionLabel(
 }
 
 export default function WrongAnswerPage() {
-  const nav = useNavigate();
-  const params = useParams();
+  const nav =
+    useNavigate();
+
+  const params =
+    useParams();
 
   const [
     items,
@@ -90,51 +116,33 @@ export default function WrongAnswerPage() {
   /**
    * 오답노트 전체 목록을 조회합니다.
    *
-   * resolved 값을 보내지 않으므로 미해결과 해결 완료
-   * 문제를 모두 조회합니다.
-   *
-   * 화면에서 이미 해결완료/미해결 상태를 표시하고 있기
-   * 때문에 전체 조회가 화면 구조와 일치합니다.
+   * resolved 값을 전송하지 않으므로
+   * 해결 완료와 미해결 문제를 모두 조회합니다.
    */
   useEffect(() => {
     let cancelled = false;
 
-    setLoading(true);
-    setError(null);
+    async function loadWrongAnswers() {
+      setLoading(true);
+      setError(null);
 
-    getWrongAnswers({
-      page: 0,
-      size: PAGE_SIZE,
-    })
-      .then((page) => {
+      try {
+        const page =
+          await getWrongAnswers({
+            page: 0,
+            size: PAGE_SIZE,
+          });
+
         if (cancelled) {
           return;
         }
 
         setItems(
-          (previous) => {
-            /**
-             * 상세 URL을 통해 먼저 불러온 오답이 있다면
-             * 목록 조회 결과에서 사라지지 않도록 병합합니다.
-             */
-            const additionalItems =
-              previous.filter(
-                (existing) =>
-                  !page.content.some(
-                    (loaded) =>
-                      loaded.wrongAnswerId ===
-                      existing.wrongAnswerId,
-                  ),
-              );
-
-            return [
-              ...page.content,
-              ...additionalItems,
-            ];
-          },
+          page.content,
         );
-      })
-      .catch((requestError) => {
+      } catch (
+        requestError
+      ) {
         if (cancelled) {
           return;
         }
@@ -142,16 +150,19 @@ export default function WrongAnswerPage() {
         setItems([]);
 
         setError(
-          requestError instanceof Error
+          requestError
+            instanceof Error
             ? requestError.message
             : "오답노트를 불러오지 못했습니다.",
         );
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) {
           setLoading(false);
         }
-      });
+      }
+    }
+
+    void loadWrongAnswers();
 
     return () => {
       cancelled = true;
@@ -159,8 +170,8 @@ export default function WrongAnswerPage() {
   }, []);
 
   /**
-   * URL에 wrongAnswerId가 있을 때 오답 정보와
-   * 문제 상세 정보를 복구합니다.
+   * URL에 wrongAnswerId가 있을 때
+   * 오답 단건 정보와 문제 상세 정보를 불러옵니다.
    *
    * 예:
    * /question-bank/wrong-answers/10
@@ -169,7 +180,10 @@ export default function WrongAnswerPage() {
     let cancelled = false;
 
     async function restoreWrongAnswer() {
-      if (!params.wrongAnswerId) {
+      if (
+        params.wrongAnswerId ===
+        undefined
+      ) {
         setActiveWrongAnswerId(
           null,
         );
@@ -200,6 +214,14 @@ export default function WrongAnswerPage() {
         ) ||
         targetId <= 0
       ) {
+        setActiveWrongAnswerId(
+          null,
+        );
+
+        setSelectedQuestion(
+          null,
+        );
+
         setError(
           "오답노트 번호가 올바르지 않습니다.",
         );
@@ -209,6 +231,10 @@ export default function WrongAnswerPage() {
 
       setActiveWrongAnswerId(
         targetId,
+      );
+
+      setSelectedQuestion(
+        null,
       );
 
       setSelectedOptionId(
@@ -228,72 +254,85 @@ export default function WrongAnswerPage() {
       );
 
       try {
-        let targetItem =
-          items.find(
-            (item) =>
-              item.wrongAnswerId ===
-              targetId,
+        /**
+         * 목록에 데이터가 있더라도 단건 API를 호출합니다.
+         *
+         * 새로고침이나 직접 URL 접근에서도
+         * 항상 동일하게 동작하도록 처리합니다.
+         */
+        const targetItem =
+          await getWrongAnswer(
+            targetId,
           );
 
-        /**
-         * 현재 목록에 없으면 단건 조회 API를 사용합니다.
-         */
-        if (!targetItem) {
-          targetItem =
-            await getWrongAnswer(
-              targetId,
-            );
-
-          if (!cancelled) {
-            setItems(
-              (previous) => {
-                const exists =
-                  previous.some(
-                    (item) =>
-                      item.wrongAnswerId ===
-                      targetId,
-                  );
-
-                if (exists) {
-                  return previous;
-                }
-
-                return [
-                  targetItem as WrongAnswerSummaryResponse,
-                  ...previous,
-                ];
-              },
-            );
-          }
+        if (cancelled) {
+          return;
         }
 
         /**
-         * 오답노트 요약에는 보기 목록이 없으므로
+         * 단건 조회 결과를 목록에도 반영합니다.
+         */
+        setItems(
+          (previous) => {
+            const exists =
+              previous.some(
+                (item) =>
+                  item.wrongAnswerId ===
+                  targetItem.wrongAnswerId,
+              );
+
+            if (exists) {
+              return previous.map(
+                (item) =>
+                  item.wrongAnswerId ===
+                  targetItem.wrongAnswerId
+                    ? targetItem
+                    : item,
+              );
+            }
+
+            return [
+              targetItem,
+              ...previous,
+            ];
+          },
+        );
+
+        /**
+         * 오답 요약 응답에는 문제 보기가 없으므로
          * 문제 상세 API를 추가 호출합니다.
          */
         const question =
           await getQuestion(
-            targetItem.question
+            targetItem
+              .question
               .questionId,
           );
 
-        if (!cancelled) {
-          setSelectedQuestion(
-            question,
-          );
+        if (cancelled) {
+          return;
         }
-      } catch (requestError) {
-        if (!cancelled) {
-          setSelectedQuestion(
-            null,
-          );
 
-          setError(
-            requestError instanceof Error
-              ? requestError.message
-              : "문제를 불러오지 못했습니다.",
-          );
+        setSelectedQuestion(
+          question,
+        );
+      } catch (
+        requestError
+      ) {
+        if (cancelled) {
+          return;
         }
+
+        setSelectedQuestion(
+          null,
+        );
+
+        setError(
+          requestError
+            instanceof Error
+            ? requestError.message
+            : "오답 문제를 불러오지 못했습니다.",
+        );
       } finally {
         if (!cancelled) {
           setRetrying(
@@ -308,7 +347,9 @@ export default function WrongAnswerPage() {
     return () => {
       cancelled = true;
     };
-  }, [params.wrongAnswerId]);
+  }, [
+    params.wrongAnswerId,
+  ]);
 
   const activeItem =
     useMemo(
@@ -326,110 +367,157 @@ export default function WrongAnswerPage() {
     );
 
   /**
-   * 다시 풀기 버튼을 누르면 URL에도 오답 ID를 반영합니다.
+   * 다시 풀기 버튼을 누르면
+   * URL에 오답노트 ID를 반영합니다.
    */
-  const openRetry = (
+  function openRetry(
     item:
       WrongAnswerSummaryResponse,
-  ) => {
+  ) {
     nav(
       `/question-bank/wrong-answers/${item.wrongAnswerId}`,
     );
-  };
+  }
 
   /**
    * 오답 문제를 다시 채점합니다.
+   *
+   * 채점 결과를 먼저 표시한 뒤
+   * AI 해설을 별도로 요청합니다.
    */
-  const submitRetry =
-    async () => {
-      if (
-        !activeItem ||
-        selectedOptionId ===
-          null
-      ) {
-        return;
-      }
+  async function submitRetry() {
+    if (
+      !activeItem ||
+      selectedOptionId ===
+        null
+    ) {
+      return;
+    }
 
-      setRetrying(
-        true,
-      );
+    setRetrying(
+      true,
+    );
 
-      setError(
-        null,
-      );
+    setError(
+      null,
+    );
 
-      try {
-        const result =
-          await retryWrongAnswer(
-            activeItem
-              .wrongAnswerId,
+    try {
+      const result =
+        await retryWrongAnswer(
+          activeItem
+            .wrongAnswerId,
 
-            selectedOptionId,
-          );
-
-        setRetryResult(
-          result,
+          selectedOptionId,
         );
 
-        /**
-         * 백엔드의 HistWrongAnswer 변경 규칙과 동일하게
-         * 프론트 상태를 갱신합니다.
-         *
-         * 정답:
-         * - isResolved = true
-         * - wrongCount 유지
-         *
-         * 오답:
-         * - isResolved = false
-         * - wrongCount 1 증가
-         */
-        setItems(
-          (previous) =>
-            previous.map(
-              (item) => {
-                if (
-                  item.wrongAnswerId !==
-                  activeItem
-                    .wrongAnswerId
-                ) {
-                  return item;
+      /**
+       * 채점 결과를 먼저 표시합니다.
+       */
+      setRetryResult(
+        result,
+      );
+
+      /**
+       * 오답노트 목록 상태를 서버 변경 규칙과 동일하게
+       * 갱신합니다.
+       *
+       * 정답:
+       * - 해결 완료
+       * - 오답 횟수 유지
+       *
+       * 오답:
+       * - 미해결
+       * - 오답 횟수 1 증가
+       */
+      setItems(
+        (previous) =>
+          previous.map(
+            (item) => {
+              if (
+                item.wrongAnswerId !==
+                activeItem
+                  .wrongAnswerId
+              ) {
+                return item;
+              }
+
+              return {
+                ...item,
+
+                isResolved:
+                  result.isCorrect,
+
+                wrongCount:
+                  result.isCorrect
+                    ? item.wrongCount
+                    : item.wrongCount +
+                      1,
+
+                lastSelectedAnswer:
+                  selectedOptionId,
+
+                correctAnswer:
+                  result.correctOptionId,
+              };
+            },
+          ),
+      );
+
+      /**
+       * AI 해설은 별도로 요청합니다.
+       *
+       * AI 서버가 실패해도 채점 결과는 유지합니다.
+       */
+      void getAiQuestionExplanation(
+        activeItem
+          .question
+          .questionId,
+
+        selectedOptionId,
+      )
+        .then(
+          (
+            explanationResponse,
+          ) => {
+            setRetryResult(
+              (current) => {
+                if (!current) {
+                  return current;
                 }
 
                 return {
-                  ...item,
+                  ...current,
 
-                  isResolved:
-                    result.isCorrect,
-
-                  wrongCount:
-                    result.isCorrect
-                      ? item.wrongCount
-                      : item.wrongCount +
-                        1,
-
-                  lastSelectedAnswer:
-                    selectedOptionId,
-
-                  correctAnswer:
-                    result.correctOptionId,
+                  explanation:
+                    explanationResponse
+                      .answer,
                 };
               },
-            ),
-        );
-      } catch (
+            );
+          },
+        )
+        .catch(() => {
+          /**
+           * AI 해설 오류는 별도로 표시하지 않고
+           * 기존 채점 결과를 유지합니다.
+           */
+        });
+    } catch (
+      requestError
+    ) {
+      setError(
         requestError
-      ) {
-        setError(
-          requestError instanceof Error
-            ? requestError.message
-            : "다시 풀기 요청에 실패했습니다.",
-        );
-      } finally {
-        setRetrying(
-          false,
-        );
-      }
-    };
+          instanceof Error
+          ? requestError.message
+          : "다시 풀기 요청에 실패했습니다.",
+      );
+    } finally {
+      setRetrying(
+        false,
+      );
+    }
+  }
 
   return (
     <div
@@ -438,6 +526,7 @@ export default function WrongAnswerPage() {
         minHeight: 0,
         overflowY: "auto",
         padding: 28,
+
         background:
           "linear-gradient(160deg,#1a2a14,#0e1a0a)",
       }}
@@ -476,6 +565,7 @@ export default function WrongAnswerPage() {
         <Card
           style={{
             marginBottom: 16,
+
             border:
               "2px solid #a94444",
           }}
@@ -506,6 +596,7 @@ export default function WrongAnswerPage() {
             display: "flex",
             flexDirection:
               "column",
+
             gap: 12,
           }}
         >
@@ -514,6 +605,7 @@ export default function WrongAnswerPage() {
               display: "flex",
               flexDirection:
                 "column",
+
               gap: 8,
             }}
           >
@@ -553,7 +645,8 @@ export default function WrongAnswerPage() {
                 오답노트를 불러오는 중입니다...
               </div>
             </Card>
-          ) : items.length === 0 ? (
+          ) : items.length ===
+              0 ? (
             <Card>
               <div
                 style={{
@@ -578,9 +671,7 @@ export default function WrongAnswerPage() {
                       item.wrongAnswerId
                     }
                     style={{
-                      display:
-                        "flex",
-
+                      display: "flex",
                       flexDirection:
                         "column",
 
@@ -594,8 +685,7 @@ export default function WrongAnswerPage() {
                   >
                     <div
                       style={{
-                        display:
-                          "flex",
+                        display: "flex",
 
                         justifyContent:
                           "space-between",
@@ -608,14 +698,9 @@ export default function WrongAnswerPage() {
                     >
                       <div
                         style={{
-                          fontFamily:
-                            ff,
-
-                          fontSize:
-                            11,
-
-                          color:
-                            "#9a7040",
+                          fontFamily: ff,
+                          fontSize: 11,
+                          color: "#9a7040",
                         }}
                       >
                         {
@@ -631,14 +716,9 @@ export default function WrongAnswerPage() {
 
                       <div
                         style={{
-                          fontFamily:
-                            ff,
-
-                          fontSize:
-                            11,
-
-                          fontWeight:
-                            700,
+                          fontFamily: ff,
+                          fontSize: 11,
+                          fontWeight: 700,
 
                           color:
                             item.isResolved
@@ -654,17 +734,10 @@ export default function WrongAnswerPage() {
 
                     <div
                       style={{
-                        fontFamily:
-                          fs,
-
-                        fontSize:
-                          13,
-
-                        color:
-                          C.inkDark,
-
-                        lineHeight:
-                          1.5,
+                        fontFamily: fs,
+                        fontSize: 13,
+                        color: C.inkDark,
+                        lineHeight: 1.5,
                       }}
                     >
                       {
@@ -675,25 +748,16 @@ export default function WrongAnswerPage() {
 
                     <div
                       style={{
-                        display:
-                          "flex",
-
+                        display: "flex",
                         gap: 8,
-
-                        flexWrap:
-                          "wrap",
+                        flexWrap: "wrap",
                       }}
                     >
                       <span
                         style={{
-                          fontFamily:
-                            ff,
-
-                          fontSize:
-                            11,
-
-                          padding:
-                            "4px 8px",
+                          fontFamily: ff,
+                          fontSize: 11,
+                          padding: "4px 8px",
 
                           background:
                             "rgba(139,94,60,0.12)",
@@ -701,8 +765,7 @@ export default function WrongAnswerPage() {
                           border:
                             "1px solid #c4a060",
 
-                          color:
-                            "#5a3010",
+                          color: "#5a3010",
                         }}
                       >
                         {
@@ -713,14 +776,9 @@ export default function WrongAnswerPage() {
 
                       <span
                         style={{
-                          fontFamily:
-                            ff,
-
-                          fontSize:
-                            11,
-
-                          padding:
-                            "4px 8px",
+                          fontFamily: ff,
+                          fontSize: 11,
+                          padding: "4px 8px",
 
                           background:
                             "rgba(139,94,60,0.12)",
@@ -728,8 +786,7 @@ export default function WrongAnswerPage() {
                           border:
                             "1px solid #c4a060",
 
-                          color:
-                            "#5a3010",
+                          color: "#5a3010",
                         }}
                       >
                         {
@@ -741,17 +798,10 @@ export default function WrongAnswerPage() {
 
                     <div
                       style={{
-                        fontFamily:
-                          ff,
-
-                        fontSize:
-                          12,
-
-                        color:
-                          "#5a3010",
-
-                        lineHeight:
-                          1.6,
+                        fontFamily: ff,
+                        fontSize: 12,
+                        color: "#5a3010",
+                        lineHeight: 1.6,
                       }}
                     >
                       <div>
@@ -803,6 +853,7 @@ export default function WrongAnswerPage() {
             display: "flex",
             flexDirection:
               "column",
+
             gap: 12,
           }}
         >
@@ -811,6 +862,7 @@ export default function WrongAnswerPage() {
               display: "flex",
               flexDirection:
                 "column",
+
               gap: 10,
             }}
           >
@@ -831,17 +883,10 @@ export default function WrongAnswerPage() {
               <>
                 <div
                   style={{
-                    fontFamily:
-                      ff,
-
-                    fontSize:
-                      12,
-
-                    color:
-                      "#5a3010",
-
-                    lineHeight:
-                      1.6,
+                    fontFamily: ff,
+                    fontSize: 12,
+                    color: "#5a3010",
+                    lineHeight: 1.6,
                   }}
                 >
                   문제 ID{" "}
@@ -863,20 +908,14 @@ export default function WrongAnswerPage() {
                   <>
                     <div
                       style={{
-                        fontFamily:
-                          fs,
-
-                        fontSize:
-                          14,
-
-                        color:
-                          C.inkDark,
+                        fontFamily: fs,
+                        fontSize: 14,
+                        color: C.inkDark,
 
                         whiteSpace:
                           "pre-wrap",
 
-                        lineHeight:
-                          1.6,
+                        lineHeight: 1.6,
                       }}
                     >
                       {
@@ -887,9 +926,7 @@ export default function WrongAnswerPage() {
 
                     <div
                       style={{
-                        display:
-                          "flex",
-
+                        display: "flex",
                         flexDirection:
                           "column",
 
@@ -897,9 +934,7 @@ export default function WrongAnswerPage() {
                       }}
                     >
                       {selectedQuestion.options.map(
-                        (
-                          option,
-                        ) => {
+                        (option) => {
                           const isSelected =
                             selectedOptionId ===
                             option.questionOptionId;
@@ -918,6 +953,9 @@ export default function WrongAnswerPage() {
                                   null,
                                 );
                               }}
+                              disabled={
+                                retrying
+                              }
                               style={{
                                 border:
                                   isSelected
@@ -936,16 +974,13 @@ export default function WrongAnswerPage() {
                                   "left",
 
                                 cursor:
-                                  "pointer",
+                                  retrying
+                                    ? "default"
+                                    : "pointer",
 
-                                fontFamily:
-                                  ff,
-
-                                fontSize:
-                                  12,
-
-                                color:
-                                  C.inkDark,
+                                fontFamily: ff,
+                                fontSize: 12,
+                                color: C.inkDark,
                               }}
                             >
                               <strong>
@@ -975,7 +1010,9 @@ export default function WrongAnswerPage() {
                           null
                       }
                     >
-                      정답 제출
+                      {retrying
+                        ? "채점 중..."
+                        : "정답 제출"}
                     </Button>
 
                     {retryResult && (
@@ -994,17 +1031,10 @@ export default function WrongAnswerPage() {
                               ? "1px solid #245020"
                               : "1px solid #9a2020",
 
-                          fontFamily:
-                            ff,
-
-                          fontSize:
-                            12,
-
-                          color:
-                            C.inkDark,
-
-                          lineHeight:
-                            1.6,
+                          fontFamily: ff,
+                          fontSize: 12,
+                          color: C.inkDark,
+                          lineHeight: 1.6,
                         }}
                       >
                         {retryResult.isCorrect
@@ -1013,8 +1043,7 @@ export default function WrongAnswerPage() {
 
                         <div
                           style={{
-                            marginTop:
-                              4,
+                            marginTop: 4,
                           }}
                         >
                           선택한 답:{" "}
@@ -1022,20 +1051,31 @@ export default function WrongAnswerPage() {
                             "-"}
                           번
                         </div>
+
+                        {retryResult.explanation && (
+                          <div
+                            style={{
+                              marginTop: 6,
+
+                              whiteSpace:
+                                "pre-wrap",
+                            }}
+                          >
+                            💡{" "}
+                            {
+                              retryResult.explanation
+                            }
+                          </div>
+                        )}
                       </div>
                     )}
                   </>
                 ) : (
                   <div
                     style={{
-                      fontFamily:
-                        ff,
-
-                      fontSize:
-                        12,
-
-                      color:
-                        "#5a3010",
+                      fontFamily: ff,
+                      fontSize: 12,
+                      color: "#5a3010",
                     }}
                   >
                     {retrying

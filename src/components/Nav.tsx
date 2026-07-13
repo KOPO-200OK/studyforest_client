@@ -103,20 +103,20 @@ export default function Nav() {
         account?.isAdmin,
     );
 
-  function handleLogout() {
-    mockAuthApi.logout();
+  async function handleLogout() {
+  setShowMenu(
+    false,
+  );
 
-    setShowMenu(
-      false,
-    );
+  await mockAuthApi.logout();
 
-    navigate(
-      "/login",
-      {
-        replace: true,
-      },
-    );
-  }
+  navigate(
+    "/login",
+    {
+      replace: true,
+    },
+  );
+}
 
   async function handleWithdraw() {
     if (

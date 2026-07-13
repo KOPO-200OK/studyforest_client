@@ -1,5 +1,5 @@
 import { Client, type IMessage } from "@stomp/stompjs";
-import { tokenStore } from "@/api/client";
+import { ensureAccessToken } from "@/api/client";
 import {
   voiceApi,
   type VoiceParticipantResponse,
@@ -185,96 +185,159 @@ export class OfficeVoiceMeshClient {
       });
   }
 
-  /**
+    /**
    * Spring STOMP WebSocket에 연결합니다.
+   *
+   * 최초 연결과 자동 재연결 시 최신 Access Token을 사용합니다.
    */
   private async connectStomp(): Promise<void> {
-    const token = tokenStore.get();
+    const initialAccessToken =
+      await ensureAccessToken();
 
-    if (!token) {
-      throw new Error("로그인이 필요합니다.");
+    if (!initialAccessToken) {
+      throw new Error(
+        "로그인이 필요합니다.",
+      );
     }
 
-    const wsUrl = getBrokerUrl();
+    const wsUrl =
+      getBrokerUrl();
 
-    this.stomp = new Client({
-      brokerURL: wsUrl,
+    this.stomp =
+      new Client({
+        brokerURL:
+          wsUrl,
 
-      connectHeaders: {
-        Authorization: `Bearer ${token}`,
-      },
+        connectHeaders: {
+          Authorization:
+            `Bearer ${initialAccessToken}`,
+        },
 
-      reconnectDelay: 3000,
-
-      /**
-       * 운영 환경에서 STOMP 디버그 로그가 출력되지 않도록
-       * 빈 함수로 설정합니다.
-       */
-      debug: () => {},
-
-      onConnect: () => {
-        /**
-         * 사용자 개인 음성 시그널 수신 채널
-         */
-        this.stomp?.subscribe(
-          "/user/queue/voice/signals",
-          (message) => {
-            void this.handleSignal(message);
-          },
-        );
+        reconnectDelay:
+          3000,
 
         /**
-         * 현재 음성 구역 참가자 입장·퇴장 채널
+         * STOMP 자동 재연결 직전에
+         * 최신 Access Token을 다시 설정합니다.
          */
-        this.stomp?.subscribe(
-          `/topic/voice/zones/${this.studyZoneId}/participants`,
-          (message) => {
-            void this.handleParticipantEvent(message);
+        beforeConnect:
+          async () => {
+            const accessToken =
+              await ensureAccessToken();
+
+            if (
+              !accessToken
+            ) {
+              throw new Error(
+                "로그인이 필요합니다.",
+              );
+            }
+
+            if (this.stomp) {
+              this.stomp
+                .connectHeaders = {
+                  Authorization:
+                    `Bearer ${accessToken}`,
+                };
+            }
           },
-        );
-      },
 
-      onStompError: () => {
-        this.onError?.(
-          "음성채팅 WebSocket 연결 중 오류가 발생했습니다.",
-        );
-      },
+        debug:
+          () => {},
 
-      onWebSocketClose: () => {
-        this.onError?.(
-          "음성채팅 WebSocket 연결이 종료되었습니다.",
-        );
-      },
-    });
+        onConnect:
+          () => {
+            this.stomp
+              ?.subscribe(
+                "/user/queue/voice/signals",
+
+                (
+                  message,
+                ) => {
+                  void this.handleSignal(
+                    message,
+                  );
+                },
+              );
+
+            this.stomp
+              ?.subscribe(
+                `/topic/voice/zones/${this.studyZoneId}/participants`,
+
+                (
+                  message,
+                ) => {
+                  void this.handleParticipantEvent(
+                    message,
+                  );
+                },
+              );
+          },
+
+        onStompError:
+          () => {
+            this.onError?.(
+              "음성채팅 WebSocket 연결 중 오류가 발생했습니다.",
+            );
+          },
+
+        onWebSocketClose:
+          () => {
+            this.onError?.(
+              "음성채팅 WebSocket 연결이 종료되었습니다.",
+            );
+          },
+      });
 
     this.stomp.activate();
 
-    /**
-     * STOMP 연결이 완료될 때까지 최대 5초 대기합니다.
-     */
-    await new Promise<void>((resolve, reject) => {
-      const startedAt = Date.now();
+    await new Promise<void>(
+      (
+        resolve,
+        reject,
+      ) => {
+        const startedAt =
+          Date.now();
 
-      const timer = window.setInterval(() => {
-        if (this.stomp?.connected) {
-          window.clearInterval(timer);
-          resolve();
-          return;
-        }
+        const timer =
+          window.setInterval(
+            () => {
+              if (
+                this.stomp
+                  ?.connected
+              ) {
+                window.clearInterval(
+                  timer,
+                );
 
-        const elapsed = Date.now() - startedAt;
+                resolve();
 
-        if (elapsed > 5000) {
-          window.clearInterval(timer);
+                return;
+              }
 
-          reject(
-            new Error(
-              "음성채팅 WebSocket 연결에 실패했습니다.",
-            ),
+              const elapsed =
+                Date.now() -
+                startedAt;
+
+              if (
+                elapsed >
+                5000
+              ) {
+                window.clearInterval(
+                  timer,
+                );
+
+                reject(
+                  new Error(
+                    "음성채팅 WebSocket 연결에 실패했습니다.",
+                  ),
+                );
+              }
+            },
+            100,
           );
-        }
-      }, 100);
-    });
+      },
+    );
   }
 
   /**

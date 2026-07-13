@@ -1053,3 +1053,23 @@ export function sendChatMessage(
     },
   );
 }
+
+/**
+ * 일반 기출문제의 AI 해설을 요청합니다.
+ *
+ * 채점 결과를 먼저 표시한 뒤 이 API를 별도로 호출하므로,
+ * AI 서버가 느리거나 실패해도 문제 채점에는 영향을 주지 않습니다.
+ */
+export function getAiQuestionExplanation(
+  questionId: number,
+  selectedOptionId: number,
+) {
+  return api.post<{
+    answer: string;
+  }>(
+    `/ai/questions/${questionId}/explanation`,
+    {
+      selectedOptionId,
+    },
+  );
+}
