@@ -248,10 +248,17 @@ function mapDifficulty(
 }
 
 /**
- * 현재 기출문제 DB는 심화 문제 기준입니다.
+ * 관리자 등록 기본 문제는 900회,
+ * 관리자 등록 심화 문제는 901회를 사용합니다.
+ *
+ * 기존 한국사 기출문제는 심화 문제로 처리합니다.
  */
-function mapExamLevel(): ExamLevel {
-  return "ADVANCED";
+function mapExamLevel(
+  examRound?: number,
+): ExamLevel {
+  return examRound === 900
+    ? "BASIC"
+    : "ADVANCED";
 }
 
 /**
@@ -317,7 +324,9 @@ function mapQuestionSummary(
       mapDifficulty(point),
 
     examLevel:
-      mapExamLevel(),
+      mapExamLevel(
+        question.examRound,
+      ),
 
     questionPreview:
       question.questionPreview,
@@ -942,6 +951,50 @@ export async function getWrongAnswers(
             item.createdAt,
         }),
       ),
+  };
+}
+
+/**
+ * 오답노트 단건 조회
+ *
+ * URL로 직접 접근하거나 새로고침했을 때
+ * 선택한 오답 정보를 복구하는 데 사용합니다.
+ */
+export async function getWrongAnswer(
+  wrongAnswerId: number,
+): Promise<WrongAnswerSummaryResponse> {
+  const item =
+    await api.get<
+      BackendWrongAnswerSummaryResponse
+    >(
+      `/wrong-answers/${wrongAnswerId}`,
+    );
+
+  return {
+    wrongAnswerId:
+      item.wrongAnswerId,
+
+    question:
+      mapQuestionSummary(
+        item.question,
+      ),
+
+    wrongCount:
+      item.wrongCount,
+
+    isResolved:
+      item.isResolved,
+
+    lastSelectedAnswer:
+      item.lastSelectedAnswer ??
+      undefined,
+
+    correctAnswer:
+      item.correctAnswer ??
+      undefined,
+
+    createdAt:
+      item.createdAt,
   };
 }
 

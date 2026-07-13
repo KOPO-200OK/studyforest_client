@@ -1,59 +1,216 @@
-import { useState, type FormEvent } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { Button, Card, Input } from "@/components/ui";
+import {
+  useState,
+  type FormEvent,
+} from "react";
+
+import {
+  Navigate,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+
+import type {
+  PendingSignupData,
+} from "@/pages/SignupPage";
+
+import {
+  Button,
+  Card,
+  Input,
+} from "@/components/ui";
+
 import ProfileAvatar from "@/components/ProfileAvatar";
-import { C, ff, fs, woodFrameBorder } from "@/styles/tokens";
-import { mockAuthApi } from "@/api/mockAuthApi";
-import { CHARACTERS, type CharacterMeta } from "@/data/characters";
+
+import {
+  C,
+  ff,
+  fs,
+  woodFrameBorder,
+} from "@/styles/tokens";
+
+import {
+  mockAuthApi,
+} from "@/api/mockAuthApi";
+
+import {
+  CHARACTERS,
+  type CharacterMeta,
+} from "@/data/characters";
+
 import chBackground from "@/imports/ch_background.png";
 
-type Step = "gender" | "character" | "nickname";
-type Gender = CharacterMeta["gender"];
+type Step =
+  | "gender"
+  | "character"
+  | "nickname";
+
+type Gender =
+  CharacterMeta["gender"];
 
 export default function SelectCharacterPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const email = (location.state as { email?: string } | null)?.email;
+  const navigate =
+    useNavigate();
 
-  const [step, setStep] = useState<Step>("character");
-  const [gender, setGender] = useState<Gender | null>("남");
-  const [characterId, setCharacterId] = useState<number | null>(null);
-  const [nickname, setNickname] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const location =
+    useLocation();
 
-  if (!email) return <Navigate to="/signup" replace />;
+  const pendingSignup =
+    (
+      location.state as {
+        pendingSignup?:
+          PendingSignupData;
+      } | null
+    )?.pendingSignup;
 
-  function chooseGender(g: Gender) {
-    setGender(g);
-    setStep("character");
+  const [
+    step,
+    setStep,
+  ] = useState<Step>(
+    "character",
+  );
+
+  const [
+    gender,
+    setGender,
+  ] = useState<
+    Gender | null
+  >(
+    "남",
+  );
+
+  const [
+    characterId,
+    setCharacterId,
+  ] = useState<
+    number | null
+  >(
+    null,
+  );
+
+  const [
+    nickname,
+    setNickname,
+  ] = useState("");
+
+  const [
+    error,
+    setError,
+  ] = useState<
+    string | null
+  >(
+    null,
+  );
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
+
+  if (!pendingSignup) {
+    return (
+      <Navigate
+        to="/signup"
+        replace
+      />
+    );
   }
 
-  function chooseCharacter(id: number) {
-    setCharacterId(id);
-    setStep("nickname");
+  const signupData =
+    pendingSignup;
+
+  function chooseGender(
+    selectedGender:
+      Gender,
+  ) {
+    setGender(
+      selectedGender,
+    );
+
+    setStep(
+      "character",
+    );
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (characterId === null) return;
-    if (!nickname.trim()) {
-      setError("닉네임을 입력해주세요");
+  function chooseCharacter(
+    id: number,
+  ) {
+    setCharacterId(
+      id,
+    );
+
+    setStep(
+      "nickname",
+    );
+  }
+
+  async function handleSubmit(
+    event: FormEvent,
+  ) {
+    event.preventDefault();
+
+    if (
+      characterId ===
+      null
+    ) {
       return;
     }
+
+    if (
+      !nickname.trim()
+    ) {
+      setError(
+        "닉네임을 입력해주세요",
+      );
+
+      return;
+    }
+
     setLoading(true);
     setError(null);
+
     try {
-      await mockAuthApi.setProfile(email as string, { nickname: nickname.trim(), characterId });
-      navigate("/login", { replace: true, state: { justSignedUp: true } });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "저장에 실패했습니다");
+      await mockAuthApi.signup(
+        signupData.email,
+        signupData.password,
+        signupData.name,
+        signupData.birthDate,
+        nickname.trim(),
+        characterId,
+      );
+
+      navigate(
+        "/login",
+        {
+          replace: true,
+
+          state: {
+            justSignedUp:
+              true,
+          },
+        },
+      );
+    } catch (
+      requestError
+    ) {
+      setError(
+        requestError
+          instanceof Error
+          ? requestError.message
+          : "저장에 실패했습니다",
+      );
     } finally {
       setLoading(false);
     }
   }
 
-  const genderChars = gender ? CHARACTERS.filter((c) => c.gender === "남") : [];
+  const genderChars =
+    gender
+      ? CHARACTERS.filter(
+          (character) =>
+            character.gender ===
+            "남",
+        )
+      : [];
 
   return (
     <div style={{ minHeight: "100vh", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: ff, padding: "32px 16px", overflow: "hidden" }}>
@@ -108,9 +265,14 @@ export default function SelectCharacterPage() {
                 </button>
               ))}
             </div>
+
             <button
               type="button"
-              onClick={() => setStep("gender")}
+              onClick={() =>
+                setStep(
+                  "gender",
+                )
+              }
               style={{ fontSize: 11, color: C.inkMid, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
             >
               ← 성별 다시 선택
@@ -126,13 +288,20 @@ export default function SelectCharacterPage() {
 
             <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <span style={{ fontSize: 11, color: C.inkMid, fontWeight: 700 }}>닉네임</span>
+
               <Input
                 value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
+                onChange={(event) =>
+                  setNickname(
+                    event.target.value,
+                  )
+                }
                 placeholder="닉네임을 입력하세요"
                 maxLength={16}
                 autoFocus
-                style={{ width: "100%" }}
+                style={{
+                  width: "100%",
+                }}
               />
             </label>
 
@@ -142,13 +311,24 @@ export default function SelectCharacterPage() {
               </div>
             )}
 
-            <Button type="submit" variant="green" block disabled={loading}>
-              {loading ? "저장 중..." : "이 캐릭터로 시작하기"}
+            <Button
+              type="submit"
+              variant="green"
+              block
+              disabled={loading}
+            >
+              {loading
+                ? "저장 중..."
+                : "이 캐릭터로 시작하기"}
             </Button>
 
             <button
               type="button"
-              onClick={() => setStep("character")}
+              onClick={() =>
+                setStep(
+                  "character",
+                )
+              }
               style={{ fontSize: 11, color: C.inkMid, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
             >
               ← 캐릭터 다시 선택
