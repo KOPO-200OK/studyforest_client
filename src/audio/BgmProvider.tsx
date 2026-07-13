@@ -16,7 +16,6 @@ const BgmContext = createContext<BgmContextValue | null>(null);
 
 export function BgmProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const trackIndex = useRef(0);
   const [enabled, setEnabled] = useState(() => localStorage.getItem(ENABLED_KEY) === "true");
   const [volume, setVolumeState] = useState(() => {
     const raw = localStorage.getItem(VOLUME_KEY);
@@ -27,8 +26,9 @@ export function BgmProvider({ children }: { children: ReactNode }) {
     const audio = audioRef.current;
     if (!audio || BGM_TRACKS.length === 0) return;
     audio.volume = volume;
+    audio.loop = true;
     if (enabled) {
-      audio.src = BGM_TRACKS[trackIndex.current];
+      audio.src = BGM_TRACKS[0];
       // 브라우저 자동재생 정책상 사용자 상호작용 전에는 재생이 막힐 수 있음 — 실패해도 무시
       audio.play().catch(() => {});
     } else {
@@ -40,15 +40,6 @@ export function BgmProvider({ children }: { children: ReactNode }) {
     if (audioRef.current) audioRef.current.volume = volume;
     localStorage.setItem(VOLUME_KEY, String(volume));
   }, [volume]);
-
-  function handleEnded() {
-    if (BGM_TRACKS.length === 0) return;
-    trackIndex.current = (trackIndex.current + 1) % BGM_TRACKS.length;
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.src = BGM_TRACKS[trackIndex.current];
-    audio.play().catch(() => {});
-  }
 
   function toggle() {
     setEnabled((prev) => {
@@ -64,7 +55,7 @@ export function BgmProvider({ children }: { children: ReactNode }) {
 
   return (
     <BgmContext.Provider value={{ enabled, toggle, volume, setVolume, hasTracks: BGM_TRACKS.length > 0 }}>
-      <audio ref={audioRef} onEnded={handleEnded} />
+      <audio ref={audioRef} />
       {children}
     </BgmContext.Provider>
   );
