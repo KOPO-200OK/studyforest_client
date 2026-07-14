@@ -208,7 +208,7 @@ export default function SelectCharacterPage() {
       ? CHARACTERS.filter(
           (character) =>
             character.gender ===
-            "남",
+            gender,
         )
       : [];
 
@@ -242,6 +242,18 @@ export default function SelectCharacterPage() {
             >
               <span style={{ fontSize: 32 }}>♂</span>
               남성
+            </button>
+            <button
+              type="button"
+              onClick={() => chooseGender("여")}
+              style={{
+                flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+                padding: "28px 12px", cursor: "pointer", fontSize: 15, fontWeight: 700, fontFamily: ff,
+                background: C.blue, border: `2px solid ${C.blueB}`, color: C.blueTx,
+              }}
+            >
+              <span style={{ fontSize: 32 }}>♀</span>
+              여성
             </button>
           </div>
         )}
