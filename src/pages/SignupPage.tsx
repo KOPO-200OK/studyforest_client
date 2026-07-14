@@ -198,6 +198,18 @@ export default function SignupPage() {
     }
 
     if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        trimmedEmail,
+      )
+    ) {
+      setError(
+        "이메일 형식이 올바르지 않습니다",
+      );
+
+      return;
+    }
+
+    if (
       trimmedName.length > 100
     ) {
       setError(
