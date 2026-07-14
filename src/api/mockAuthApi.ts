@@ -189,6 +189,35 @@ export const mockAuthApi = {
     );
   },
 
+    /**
+   * 회원가입 첫 번째 화면의 입력값을 서버에서 검증합니다.
+   *
+   * 이 단계에서는 회원을 저장하지 않습니다.
+   * 이메일 중복과 기본 입력 형식만 검증합니다.
+   */
+  async validateSignup(
+    email: string,
+    password: string,
+    name: string,
+    birthDate: string,
+  ): Promise<void> {
+    await api.post<void>(
+      "/auth/signup/validate",
+      {
+        email:
+          email.trim(),
+
+        password,
+
+        name:
+          name.trim(),
+
+        birthdate:
+          birthDate,
+      },
+    );
+  },
+
   /**
    * 닉네임과 캐릭터를 포함한 회원가입입니다.
    */
