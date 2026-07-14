@@ -66,7 +66,7 @@ export default function SelectCharacterPage() {
     step,
     setStep,
   ] = useState<Step>(
-    "character",
+    "gender",
   );
 
   const [
@@ -75,7 +75,7 @@ export default function SelectCharacterPage() {
   ] = useState<
     Gender | null
   >(
-    "남",
+    null,
   );
 
   const [
