@@ -651,7 +651,9 @@ export default function AdminQuestionsPage() {
           questionContent
             .trim(),
 
-        passage,
+        passage:
+          passage?.trim() ||
+          null,
 
         point:
           DIFFICULTY_POINT[
@@ -921,6 +923,51 @@ export default function AdminQuestionsPage() {
                 fontFamily: ff,
               }}
             />
+          </label>
+
+          <label
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 11,
+                color: C.inkMid,
+                fontWeight: 700,
+              }}
+            >
+              본문(제시문)
+            </span>
+
+            <textarea
+              value={passage ?? ""}
+              onChange={(event) =>
+                setPassage(
+                  event.target.value,
+                )
+              }
+              placeholder="문제에 필요한 본문 또는 제시문을 입력하세요 (선택사항)"
+              rows={5}
+              maxLength={4000}
+              style={{
+                ...selectStyle,
+                resize: "vertical",
+                fontFamily: ff,
+              }}
+            />
+
+            <span
+              style={{
+                alignSelf: "flex-end",
+                fontSize: 10,
+                color: C.inkMid,
+              }}
+            >
+              {(passage ?? "").length}/4000
+            </span>
           </label>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
