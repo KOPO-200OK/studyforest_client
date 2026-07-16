@@ -1,2 +1,8 @@
 @import 'tailwindcss' source(none);
 @source '../**/*.{js,ts,jsx,tsx}';
+
+/* 공숲 공통 폰트 토큰 — style={{ fontFamily: ff }} 대신 className="font-ui" 처럼 사용 */
+@theme {
+  --font-ui: 'Noto Sans KR', sans-serif;
+  --font-title: 'Noto Serif KR', serif;
+}

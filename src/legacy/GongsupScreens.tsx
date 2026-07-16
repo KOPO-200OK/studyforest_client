@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CheckCircle2, Circle, MessageCircle, PenLine, BarChart2,
-  BookOpen, Bell, Send, Target, ChevronRight,
-  Clock, Play, Pause, RotateCcw, Mic, MicOff,
+  BookOpen, Send, ChevronRight,
+  RotateCcw, Mic, MicOff,
 } from "lucide-react";
 
 // ── 맵: 공숲 (시간대별 이미지) ─────────────────────────────────────
@@ -285,34 +285,16 @@ const C = {
   hanjiB:   "#b8a880",   // 한지 테두리
   hanjiSh:  "#7a6040",   // 한지 그림자
   wood:     "linear-gradient(90deg,#5a3a18,#7a5030)", // 나무 헤더
-  woodB:    "#3a2010",   // 나무 테두리
-  inkDark:  "#241408",   // 먹색 텍스트
-  inkMid:   "#6a4e28",   // 중간 갈색 텍스트
-  inkLight: "#9a8060",   // 연한 갈색
-  fg:       "#ccc0a8",   // 사이드바 텍스트
-  green:    "linear-gradient(135deg,#2e5224,#1c3818)", // 녹색 버튼
-  greenTx:  "#90b878",   // 녹색 버튼 텍스트
-  greenB:   "#162e10",
-  blue:     "linear-gradient(135deg,#243d6a,#162448)", // 파랑 버튼
-  blueTx:   "#88aad0",
-  blueB:    "#101c38",
-  red:      "linear-gradient(135deg,#8a2828,#681818)",  // 빨강 버튼
-  redTx:    "#d8b0b0",
-  redB:     "#400808",
   sidebarBg:"linear-gradient(180deg,rgba(10,6,2,0.96),rgba(16,10,4,0.94))",
   sidebarBr:"#3a2008",
-  navBg:    "linear-gradient(90deg,#120804,#16100a,#120804)",
-  navBr:    "#6a4020",
-  mapBg:    "#1e3614",
-  active:   "#c8a030",   // 활성 텍스트 (금색, 낮춤)
 };
 
 /* ── Shared primitives ────────────────────────────────────────── */
 function Bar({ pct, color = "#4a8030" }: { pct: number; color?: string }) {
   return (
-    <div style={{ background: "#c8a860", border: "1px solid #9a7830", height: 8, position: "relative", overflow: "hidden" }}>
-      <div style={{ width: `${pct}%`, height: "100%", background: `linear-gradient(90deg,${color},${color}aa)`, transition: "width 0.4s", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }} />
-      {[25, 50, 75].map(t => <div key={t} style={{ position: "absolute", left: `${t}%`, top: 0, bottom: 0, width: 1, background: "rgba(0,0,0,0.15)" }} />)}
+    <div className="relative h-2 overflow-hidden border" style={{ background: "#c8a860", borderColor: "#9a7830" }}>
+      <div className="h-full" style={{ width: `${pct}%`, background: `linear-gradient(90deg,${color},${color}aa)`, transition: "width 0.4s", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }} />
+      {[25, 50, 75].map(t => <div key={t} className="absolute top-0 bottom-0 w-px" style={{ left: `${t}%`, background: "rgba(0,0,0,0.15)" }} />)}
     </div>
   );
 }
@@ -325,9 +307,9 @@ function Panel({ title, icon, children, accent }: {
     <div style={{ background: C.hanji, border: `2px solid ${C.hanjiB}`, boxShadow: `0 3px 0 ${C.hanjiSh}, 0 5px 16px rgba(0,0,0,0.3)` }}>
       <div className="flex items-center gap-2 px-3 py-2" style={{ background: hdrBg, borderBottom: `2px solid rgba(0,0,0,0.28)`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)" }}>
         <span style={{ color: "#c8a030", filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.5))" }}>{icon}</span>
-        <span style={{ color: "#ddd0b8", fontFamily: fs, fontWeight: 700, fontSize: 12, letterSpacing: "0.04em", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>{title}</span>
-        <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
-          {[0, 1].map(i => <div key={i} style={{ width: 4, height: 4, borderRadius: 1, background: "#1e0e04", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)" }} />)}
+        <span className="font-title text-xs font-bold tracking-[0.04em]" style={{ color: "#ddd0b8", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>{title}</span>
+        <div className="ml-auto flex gap-1">
+          {[0, 1].map(i => <div key={i} className="h-1 w-1 rounded-[1px]" style={{ background: "#1e0e04", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)" }} />)}
         </div>
       </div>
       <div className="p-3">{children}</div>
@@ -475,54 +457,6 @@ function WeakEraContent() {
 }
 
 /* ── Zone sign for map ────────────────────────────────────────── */
-function ZoneSign({ emoji, name, sub }: { emoji: string; name: string; sub: string }) {
-  return (
-    <div className="group cursor-pointer" style={{ background: "linear-gradient(135deg,#9a6030,#7a4a1a)", border: "2px solid #4a2808", boxShadow: "3px 3px 0 #2a1406, 0 6px 20px rgba(0,0,0,0.5)", padding: "6px 10px", minWidth: 140, position: "relative" }}>
-      <div style={{ position: "absolute", top: 3, left: 5, width: 5, height: 5, background: "#2a1406", borderRadius: 1 }} />
-      <div style={{ position: "absolute", top: 3, right: 5, width: 5, height: 5, background: "#2a1406", borderRadius: 1 }} />
-      <div style={{ position: "absolute", inset: 0, opacity: 0.07, background: "repeating-linear-gradient(90deg,transparent 0px,transparent 4px,rgba(0,0,0,1) 4px,rgba(0,0,0,1) 5px)" }} />
-      <div className="relative flex items-center gap-1.5">
-        <span style={{ fontSize: 14 }}>{emoji}</span>
-        <div>
-          <div style={{ color: "#f8e8c0", fontFamily: fs, fontWeight: 700, fontSize: 12, textShadow: "0 1px 3px rgba(0,0,0,0.7)" }}>{name}</div>
-          <div style={{ color: "#d4b88a", fontSize: 9.5, marginTop: 1, fontFamily: ff }}>{sub}</div>
-        </div>
-        <ChevronRight size={10} style={{ color: "#d4b88a", marginLeft: "auto" }} />
-      </div>
-    </div>
-  );
-}
-
-/* ── Top nav ──────────────────────────────────────────────────── */
-function Nav({ page, setPage }: { page: string; setPage: (p: string) => void }) {
-  const NAV_ITEMS = ["스터디룸", "문제은행", "나의 공부", "장원급제", "관리자"];
-  return (
-    <nav style={{ height: 52, flexShrink: 0, display: "flex", alignItems: "center", padding: "0 16px", gap: 4, zIndex: 50, background: C.navBg, borderBottom: `3px solid ${C.navBr}`, boxShadow: `0 3px 0 ${C.sidebarBr}, 0 4px 20px rgba(0,0,0,0.65)` }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 20 }}>
-        <span style={{ fontSize: 22, filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))", lineHeight: 1 }}>🌲</span>
-        <span style={{ fontFamily: fs, fontWeight: 700, fontSize: 18, color: "#f5e6c8", textShadow: "0 2px 6px rgba(0,0,0,0.5)" }}>공숲</span>
-        <span style={{ fontSize: 10, padding: "2px 6px", background: "#7a4f2e", color: "#f5c842", border: "1px solid #c4a060", fontWeight: 700, boxShadow: "1px 1px 0 #3a2010" }}>한국사</span>
-      </div>
-      {NAV_ITEMS.map((item, i) => {
-        const key = item;
-        const active = page === key;
-        return (
-          <button key={i} onClick={() => setPage(key)} style={{ padding: "5px 12px", fontSize: 13, color: active ? C.active : "#887060", fontWeight: active ? 700 : 400, background: active ? "rgba(200,160,48,0.1)" : "transparent", border: active ? "1px solid rgba(200,160,48,0.22)" : "1px solid transparent", cursor: "pointer", fontFamily: ff }}>
-            {item}
-          </button>
-        );
-      })}
-      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-        <Bell size={17} style={{ color: "#c8a060", cursor: "pointer" }} />
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 10px", background: "rgba(139,94,60,0.22)", border: "1px solid #8b5e3c", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.07), 1px 1px 0 #3a2010" }}>
-          <span style={{ fontSize: 16 }}>🧑‍🎓</span>
-          <span style={{ fontSize: 13, color: "#f5e6c8", fontFamily: ff }}>역사왕123</span>
-        </div>
-      </div>
-    </nav>
-  );
-}
-
 /* ── 학습 시간 포맷: 초 → "Xh Ym" ─────────────────────────────── */
 function formatStudyHours(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -891,40 +825,34 @@ function SeatMarker({ seat, isSelected, onClick }: { seat: Seat; isSelected: boo
     <div
       onClick={() => clickable && onClick(seat.id)}
       title={`${seat.id}번 · ${seat.zone}`}
+      className="absolute z-20 flex h-8 w-8 select-none items-center justify-center rounded-full"
       style={{
-        position: "absolute",
         left: `${(seat.x / MAP_W) * 100}%`,
         top:  `${(seat.y / MAP_H) * 100}%`,
         transform: "translate(-50%,-50%)",
-        width: 32, height: 32,
-        borderRadius: "50%",
         background: s.bg,
         border: `2.5px solid ${s.border}`,
         boxShadow: `0 0 0 3px ${s.glow !== "none" ? s.glow : "transparent"}, 0 3px 10px rgba(0,0,0,0.55)`,
-        display: "flex", alignItems: "center", justifyContent: "center",
         cursor: clickable ? "pointer" : "default",
         transition: "transform 0.12s, box-shadow 0.12s",
-        zIndex: 20,
-        userSelect: "none",
       }}
       onMouseEnter={e => { if (clickable) (e.currentTarget as HTMLElement).style.transform = "translate(-50%,-50%) scale(1.18)"; }}
       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translate(-50%,-50%) scale(1)"; }}
     >
-      <span style={{ fontSize: 10, fontWeight: 800, color: s.text, fontFamily: ff, lineHeight: 1 }}>{seat.id}</span>
+      <span className="font-ui text-[10px] font-extrabold leading-none" style={{ color: s.text }}>{seat.id}</span>
     </div>
   );
 }
 
 function ZoneVoiceRow({ name, micOn, speaking }: { name: string; micOn: boolean; speaking: boolean }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <div style={{
-        width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
+    <div className="flex items-center gap-1.5">
+      <div className="h-[7px] w-[7px] shrink-0 rounded-full" style={{
         background: speaking ? "#3ba55c" : "#4a4030",
         boxShadow: speaking ? "0 0 6px #3ba55c, 0 0 10px rgba(59,165,92,0.7)" : "none",
         transition: "all 0.15s",
       }} />
-      <span style={{ fontSize: 10, fontFamily: ff, color: "#e8d8b8", flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+      <span className="font-ui flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[10px]" style={{ color: "#e8d8b8" }}>
         {name}
       </span>
       {micOn ? <Mic size={11} color="#8ee0a8" /> : <MicOff size={11} color="#c86868" />}
